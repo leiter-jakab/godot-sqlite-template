@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://cvlh5n3d7v45o"]
+
+[ext_resource type="Script" uid="uid://cxc2o85txwo5v" path="res://src/ui/ui_main.gd" id="1_l2ry5"]
+
+[node name="UiMain" type="Control" unique_id=2131114929]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_l2ry5")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1673761112]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1208008744]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer" unique_id=590777565]
+layout_mode = 2
+text = "Saved Games"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer" unique_id=657093795]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GameList" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer" unique_id=888152723]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="NewGameLabel" type="Label" parent="MarginContainer/VBoxContainer" unique_id=1420031799]
+layout_mode = 2
+text = "New Game"
+horizontal_alignment = 1
+
+[node name="NameField" type="LineEdit" parent="MarginContainer/VBoxContainer" unique_id=427864648]
+layout_mode = 2
+placeholder_text = "Enter game name"
+
+[node name="NewGameButton" type="Button" parent="MarginContainer/VBoxContainer" unique_id=328934206]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "New Game"
+
+[node name="CloseGameButton" type="Button" parent="MarginContainer/VBoxContainer" unique_id=445473901]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Close Game"

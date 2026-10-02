@@ -1,0 +1,9 @@
+.vscode
+.venv
+__pycache__
+
+addons/gut
+
+.godot
+*.tmp
+*.depren
