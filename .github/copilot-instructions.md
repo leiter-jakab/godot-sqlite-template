@@ -26,6 +26,7 @@ The important pieces are:
 
 ## Project conventions
 
+- Follow the applicable `.editorconfig` settings for all code you create, modify, or generate.
 - Prefer small, explicit Godot scripts with typed properties and clear naming.
 - Preserve the current folder structure: scenes in `scenes/`, runtime logic in `src/`, data contracts in `data/`, and generator tools in `tools/`.
 - When adding a new runtime feature, keep the UI, state changes, and persistence responsibilities separated.

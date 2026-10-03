@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
 from pathlib import Path
@@ -14,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "src" / "persistence" / "data_generated"
 SCHEMA_PATH = REPO_ROOT / "data" / "schema" / "game.json"
 SEED_DIR = REPO_ROOT / "data" / "seed"
+EDITORCONFIG_PATH = REPO_ROOT / ".editorconfig"
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TABLE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 RESERVED_MEMBERS = {"table_name", "from_row", "to_row", "get_by_id", "get_all"}
@@ -23,6 +25,84 @@ FIELD_TYPES = {
     "real": ("float", "0.0", "float"),
     "boolean": ("bool", "false", "bool"),
 }
+
+
+def load_editorconfig_settings(path: Path) -> Dict[str, str]:
+    settings = {
+        "charset": "utf-8",
+        "end_of_line": "lf",
+        "indent_style": "space",
+        "indent_size": "4",
+    }
+    try:
+        relative_path = path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+    except ValueError:
+        relative_path = path.name
+
+    active_section_matches = True
+    for raw_line in EDITORCONFIG_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            pattern = line[1:-1]
+            target = relative_path if "/" in pattern else path.name
+            active_section_matches = fnmatch.fnmatchcase(target, pattern)
+            continue
+        if active_section_matches and "=" in line:
+            key, value = (part.strip().lower() for part in line.split("=", 1))
+            if key != "root":
+                settings[key] = value
+
+    return settings
+
+
+def format_generated_gdscript(
+    lines: list[str], indent_unit: str, line_ending: str
+) -> str:
+    formatted_lines = []
+    for line in lines:
+        indent_size = len(line) - len(line.lstrip(" "))
+        if indent_size % 4:
+            raise ValueError("Generated GDScript indentation must use four-space levels internally.")
+        formatted_lines.append(indent_unit * (indent_size // 4) + line[indent_size:])
+    return line_ending.join(formatted_lines)
+
+
+def output_format(settings: Dict[str, str]) -> tuple[str, str, str]:
+    charset = settings.get("charset", "utf-8")
+    encodings = {
+        "utf-8": "utf-8",
+        "utf-8-bom": "utf-8-sig",
+        "latin1": "latin-1",
+        "utf-16be": "utf-16-be",
+        "utf-16le": "utf-16-le",
+    }
+    if charset not in encodings:
+        raise ValueError(f"Unsupported .editorconfig charset for generated GDScript: {charset}")
+
+    line_endings = {"lf": "\n", "cr": "\r", "crlf": "\r\n"}
+    end_of_line = settings.get("end_of_line", "lf")
+    if end_of_line not in line_endings:
+        raise ValueError(f"Unsupported .editorconfig end_of_line: {end_of_line}")
+
+    indent_style = settings.get("indent_style", "space")
+    if indent_style == "tab":
+        indent_unit = "\t"
+    elif indent_style == "space":
+        indent_size = settings.get("indent_size", "4")
+        if indent_size == "tab":
+            indent_size = settings.get("tab_width", "4")
+        try:
+            indent_unit = " " * int(indent_size)
+        except ValueError as exc:
+            raise ValueError(f"Invalid .editorconfig indent_size: {indent_size}") from exc
+        if not indent_unit:
+            raise ValueError(".editorconfig indent_size must be greater than zero.")
+    else:
+        raise ValueError(f"Unsupported .editorconfig indent_style: {indent_style}")
+
+    return encodings[charset], line_endings[end_of_line], indent_unit
 
 
 def load_json_file(path: Path) -> Any:
@@ -78,7 +158,12 @@ def to_class_name(table_name: str) -> str:
     return "".join(part[0].upper() + part[1:] for part in parts) + "Data"
 
 
-def render_data_class(table_name: str, fields: Dict[str, Dict[str, Any]]) -> str:
+def render_data_class(
+    table_name: str,
+    fields: Dict[str, Dict[str, Any]],
+    indent_unit: str = "    ",
+    line_ending: str = "\n",
+) -> str:
     class_name = to_class_name(table_name)
     lines = ["extends RefCounted", "", f"class_name {class_name}", ""]
 
@@ -115,14 +200,19 @@ def render_data_class(table_name: str, fields: Dict[str, Dict[str, Any]]) -> str
     for field_name in fields:
         lines.append(f'        "{field_name}": {field_name},')
     lines.extend(["    }", ""])
-    return "\n".join(lines)
+    return format_generated_gdscript(lines, indent_unit, line_ending)
 
 
 def generated_classes(
-    tables: Dict[str, Dict[str, Dict[str, Any]]], output_dir: Path
+    tables: Dict[str, Dict[str, Dict[str, Any]]],
+    output_dir: Path,
+    indent_unit: str = "    ",
+    line_ending: str = "\n",
 ) -> Dict[Path, str]:
     return {
-        output_dir / f"{table_name}_data.gd": render_data_class(table_name, fields)
+        output_dir / f"{table_name}_data.gd": render_data_class(
+            table_name, fields, indent_unit, line_ending
+        )
         for table_name, fields in tables.items()
     }
 
@@ -135,7 +225,11 @@ def pluralize_table_name(table_name: str) -> str:
     return table_name + "s"
 
 
-def render_repository(tables: Dict[str, Dict[str, Dict[str, Any]]]) -> str:
+def render_repository(
+    tables: Dict[str, Dict[str, Dict[str, Any]]],
+    indent_unit: str = "    ",
+    line_ending: str = "\n",
+) -> str:
     lines = [
         "extends RefCounted",
         "",
@@ -188,7 +282,8 @@ def render_repository(tables: Dict[str, Dict[str, Dict[str, Any]]]) -> str:
             ]
         )
 
-    return "\n".join(lines) + "\n"
+    lines.append("")
+    return format_generated_gdscript(lines, indent_unit, line_ending)
 
 
 def validate_seed_against_schema(
@@ -224,10 +319,12 @@ def validate_seed_files(tables: Dict[str, Dict[str, Dict[str, Any]]], seed_dir: 
         validate_seed_against_schema(tables, load_json_file(seed_path), seed_path)
 
 
-def check_generated_files(expected: Dict[Path, str], output_dir: Path) -> bool:
+def check_generated_files(
+    expected: Dict[Path, str], output_dir: Path, encoding: str
+) -> bool:
     valid = True
     for path, expected_content in expected.items():
-        if not path.exists() or path.read_text(encoding="utf-8") != expected_content:
+        if not path.exists() or path.read_bytes() != expected_content.encode(encoding):
             print(f"Generated data class is missing or out of date: {path}")
             valid = False
 
@@ -259,17 +356,22 @@ def main() -> int:
             validate_seed_files(tables, SEED_DIR)
             print("Seed files match the schema contract.")
 
-        expected = generated_classes(tables, args.output_dir)
-        expected[args.output_dir / "data_repository.gd"] = render_repository(tables)
+        settings = load_editorconfig_settings(args.output_dir / "data_repository.gd")
+        encoding, line_ending, indent_unit = output_format(settings)
+        expected = generated_classes(tables, args.output_dir, indent_unit, line_ending)
+        expected[args.output_dir / "data_repository.gd"] = render_repository(
+            tables, indent_unit, line_ending
+        )
         if args.check:
-            if not check_generated_files(expected, args.output_dir):
+            if not check_generated_files(expected, args.output_dir, encoding):
                 return 1
             print(f"Generated data classes and repository are up to date in {args.output_dir}.")
             return 0
 
         args.output_dir.mkdir(parents=True, exist_ok=True)
         for path, content in expected.items():
-            path.write_text(content, encoding="utf-8")
+            with path.open("w", encoding=encoding, newline="") as generated_file:
+                generated_file.write(content)
             print(f"Wrote {path}")
     except (OSError, ValueError) as exc:
         print(f"Generation failed: {exc}")
