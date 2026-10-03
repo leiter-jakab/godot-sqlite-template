@@ -26,6 +26,10 @@ func load_existing_game(game_name: String) -> bool:
     return _game_manager.load_existing_game(game_name) != null
 
 
+func delete_game(game_name: String) -> bool:
+    return _game_manager.delete_game(game_name)
+
+
 func quit_game() -> void:
     if get_tree() != null:
         get_tree().quit()

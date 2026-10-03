@@ -15,6 +15,7 @@ func enter() -> void:
 
     ui.new_game_requested.connect(_on_new_game_requested)
     ui.existing_game_selected.connect(_on_existing_game_selected)
+    ui.delete_game_requested.connect(_on_delete_game_requested)
     ui.close_game_requested.connect(_on_close_game_requested)
 
     ui.initialize(owner.get_existing_game_names())
@@ -26,6 +27,7 @@ func exit() -> void:
 
     ui.new_game_requested.disconnect(_on_new_game_requested)
     ui.existing_game_selected.disconnect(_on_existing_game_selected)
+    ui.delete_game_requested.disconnect(_on_delete_game_requested)
     ui.close_game_requested.disconnect(_on_close_game_requested)
 
     ui.visible = false
@@ -52,6 +54,12 @@ func _on_existing_game_selected(game_name: String) -> void:
     print("Load existing game: %s" % game_name)
     if owner.load_existing_game(game_name):
         request_gameplay_transition()
+
+
+func _on_delete_game_requested(game_name: String) -> void:
+    print("Delete saved game: %s" % game_name)
+    if owner.delete_game(game_name):
+        ui.initialize(owner.get_existing_game_names())
 
 
 func _on_close_game_requested() -> void:

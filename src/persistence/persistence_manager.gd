@@ -47,9 +47,15 @@ func delete_database(db_name: String) -> bool:
         push_error("Database name cannot be empty.")
         return false
 
+    var cached_database: SQLite = _database_cache.get(resolved_db_name)
+    if cached_database != null and not cached_database.close_db():
+        push_error("Failed to close SQLite database '%s': %s" % [resolved_db_name, cached_database.error_message])
+        return false
+    if cached_database != null:
+        _database_cache.erase(resolved_db_name)
+
     var db_path := _build_database_path(resolved_db_name)
     if not FileAccess.file_exists(db_path):
-        _database_cache.erase(resolved_db_name)
         return true
 
     var absolute_path := ProjectSettings.globalize_path(db_path)
@@ -57,7 +63,6 @@ func delete_database(db_name: String) -> bool:
         push_error("Failed to delete SQLite database at %s." % db_path)
         return false
 
-    _database_cache.erase(resolved_db_name)
     return true
 
 
