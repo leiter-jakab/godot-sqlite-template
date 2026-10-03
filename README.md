@@ -2,16 +2,22 @@
 
 This repository is a Godot 4 starter template for games that need SQLite-backed persistence without scattering database logic through gameplay code. The project keeps the app flow, UI, and persistence responsibilities separated so it is easy to extend with a schema-first data model.
 
-## Dependency
+## Dependencies
 
-This template requires the [godot-sqlite addon](https://github.com/2shady4u/godot-sqlite). Make sure it is installed at `res://addons/godot-sqlite/`; the project enables its plugin through `project.godot`.
+The required Godot addons are included under `addons/`, so a fresh clone does not need a separate addon download:
+
+- [godot-sqlite](https://github.com/2shady4u/godot-sqlite) provides the SQLite extension used by the runtime.
+- [GUT](https://github.com/bitwes/Gut) provides the test framework and is enabled in `project.godot`.
+
+Keep the upstream license and notice files when updating either addon.
 
 ## Project structure
 
 ```text
 .
 ├── addons/
-│   └── godot-sqlite/         # SQLite Godot extension and runtime support
+│   ├── godot-sqlite/         # SQLite Godot extension and runtime support
+│   └── gut/                  # GUT test framework
 ├── data/
 │   ├── schema/                # Canonical database schema files
 │   └── seed/                  # Default or test JSON seed data
