@@ -5,11 +5,6 @@ class_name MainMenuState
 var ui: UiMain
 
 
-func _init(root: Main, ui_instance: UiMain = null) -> void:
-    super(root)
-    ui = ui_instance
-
-
 func enter() -> void:
     print("State: main menu")
     if ui == null:
@@ -22,7 +17,7 @@ func enter() -> void:
     ui.existing_game_selected.connect(_on_existing_game_selected)
     ui.close_game_requested.connect(_on_close_game_requested)
 
-    ui.initialize(owner.game_manager.get_existing_game_names())
+    ui.initialize(owner.get_existing_game_names())
 
 
 func exit() -> void:
@@ -42,16 +37,21 @@ func unhandled_input(event: InputEvent) -> void:
         request_gameplay_transition()
 
 
+func _init(root: Main, ui_instance: UiMain = null) -> void:
+    super(root)
+    ui = ui_instance
+
+
 func _on_new_game_requested(game_name: String) -> void:
     print("Create new game: %s" % game_name)
-    owner.game_manager.start_new_game(game_name)
-    request_gameplay_transition()
+    if owner.start_new_game(game_name):
+        request_gameplay_transition()
 
 
 func _on_existing_game_selected(game_name: String) -> void:
     print("Load existing game: %s" % game_name)
-    owner.game_manager.load_existing_game(game_name)
-    request_gameplay_transition()
+    if owner.load_existing_game(game_name):
+        request_gameplay_transition()
 
 
 func _on_close_game_requested() -> void:

@@ -5,10 +5,6 @@ class_name GameState
 var owner: Main
 
 
-func _init(root: Main) -> void:
-    owner = root
-
-
 func enter() -> void:
     pass
 
@@ -39,3 +35,7 @@ func request_paused_gameplay_transition() -> void:
 
 func request_transition(next_state: GameState) -> void:
     owner.change_state(next_state)
+
+
+func _init(root: Main) -> void:
+    owner = root

@@ -14,6 +14,35 @@ var _ui_main: UiMain
 var _ui_gameplay_paused: UiGameplayPaused
 
 
+func get_existing_game_names() -> Array[String]:
+    return _game_manager.get_existing_game_names()
+
+
+func start_new_game(game_name: String) -> bool:
+    return _game_manager.start_new_game(game_name) != null
+
+
+func load_existing_game(game_name: String) -> bool:
+    return _game_manager.load_existing_game(game_name) != null
+
+
+func quit_game() -> void:
+    if get_tree() != null:
+        get_tree().quit()
+
+
+func transition_to_gameplay() -> void:
+    _change_state(GameplayState.new(self))
+
+
+func transition_to_main_menu() -> void:
+    _change_state(MainMenuState.new(self, _ui_main))
+
+
+func transition_to_paused_gameplay() -> void:
+    _change_state(GameplayPausedState.new(self, _ui_gameplay_paused))
+
+
 func _ready() -> void:
     _persistence_manager = PersistenceManager.new()
     _game_manager = GameManager.new(_persistence_manager)
@@ -75,20 +104,3 @@ func _change_state(new_state: GameState) -> void:
 
     _current_state = new_state
     _current_state.enter()
-
-
-func transition_to_gameplay() -> void:
-    _change_state(GameplayState.new(self))
-
-
-func transition_to_main_menu() -> void:
-    _change_state(MainMenuState.new(self, _ui_main))
-
-
-func transition_to_paused_gameplay() -> void:
-    _change_state(GameplayPausedState.new(self, _ui_gameplay_paused))
-
-
-func quit_game() -> void:
-    if get_tree() != null:
-        get_tree().quit()

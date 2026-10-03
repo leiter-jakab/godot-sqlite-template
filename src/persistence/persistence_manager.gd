@@ -167,8 +167,8 @@ func _build_seed_path(seed_name: String) -> String:
     if normalized_name.is_empty():
         return ""
     if normalized_name.ends_with(".json"):
-        return SCHEMA_DIRECTORY + normalized_name
-    return SCHEMA_DIRECTORY + normalized_name + ".json"
+        return SEED_DIRECTORY + normalized_name
+    return SEED_DIRECTORY + normalized_name + ".json"
 
 
 func _normalize_database_name(db_name: String) -> String:
