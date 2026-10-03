@@ -15,15 +15,12 @@ var saved_games: Array[String] = []
 var selected_game_name: String = ""
 
 
-func _ready() -> void:
-    new_game_button.pressed.connect(_on_new_game_pressed)
-    close_game_button.pressed.connect(_on_close_game_pressed)
-
-
 func initialize(existing_games: Array[String]) -> void:
     saved_games = existing_games.duplicate()
     selected_game_name = ""
     populate_game_list()
+
+
 func populate_game_list() -> void:
     for child in game_list.get_children():
         child.queue_free()
@@ -36,6 +33,11 @@ func populate_game_list() -> void:
 
     if saved_games.size() > 0:
         selected_game_name = saved_games[0]
+
+
+func _ready() -> void:
+    new_game_button.pressed.connect(_on_new_game_pressed)
+    close_game_button.pressed.connect(_on_close_game_pressed)
 
 
 func _on_game_selected(game_name: String) -> void:

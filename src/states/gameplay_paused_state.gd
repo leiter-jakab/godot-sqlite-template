@@ -5,11 +5,6 @@ class_name GameplayPausedState
 var ui: UiGameplayPaused
 
 
-func _init(root: Main, ui_instance: UiGameplayPaused = null) -> void:
-    super(root)
-    ui = ui_instance
-
-
 func enter() -> void:
     print("State: gameplay paused")
     if ui == null:
@@ -34,6 +29,11 @@ func exit() -> void:
 func unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept"):
         request_gameplay_transition()
+
+
+func _init(root: Main, ui_instance: UiGameplayPaused = null) -> void:
+    super(root)
+    ui = ui_instance
 
 
 func _on_resume_requested() -> void:

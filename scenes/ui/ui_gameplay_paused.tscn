@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://capu6dcsdw64d"]
 
-[ext_resource type="Script" uid="uid://2onpyl3f4ynq" path="res://src/ui/ui_gameplay_paused.gd" id="1_7qyx3"]
+[ext_resource type="Script" uid="uid://dma0dq3f3j5w" path="res://src/ui/ui_gameplay_paused.gd" id="1_7qyx3"]
 
 [node name="UiGamePaused" type="Control" unique_id=1421595412]
 layout_mode = 3
