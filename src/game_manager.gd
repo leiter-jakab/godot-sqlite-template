@@ -35,6 +35,15 @@ func load_existing_game(game_name: String) -> SQLite:
     return _persistence_manager.get_database_handle(GAME_SCHEMA_NAME, db_name)
 
 
+func delete_game(game_name: String) -> bool:
+    var db_name := _normalize_game_name(game_name)
+    if db_name.is_empty():
+        push_error("Game name cannot be empty.")
+        return false
+
+    return _persistence_manager.delete_database(db_name)
+
+
 func get_existing_game_names() -> Array[String]:
     var game_names: Array[String] = []
     for database_name in _persistence_manager.get_existing_databases():

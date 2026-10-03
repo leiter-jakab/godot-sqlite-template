@@ -11,6 +11,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_l2ry5")
 
+[node name="DeleteGameConfirmationDialog" type="ConfirmationDialog" parent="."]
+title = "Delete Saved Game"
+
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=1673761112]
 layout_mode = 1
 anchors_preset = 15
