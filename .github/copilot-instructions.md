@@ -15,6 +15,8 @@ The important pieces are:
 
 ## Working rules
 
+- Treat `addons/godot-sqlite/` and `addons/gut/` as vendored third-party dependencies; do not ask contributors to fetch them separately while they remain in the repository.
+- When updating a vendored addon, preserve its upstream license and notice files and record the upstream source/version or commit in the change description.
 - Treat `data/schema/game.json` as the source of truth for database structure.
 - After changing the schema, regenerate persistence code with `python tools/generate_data_classes.py`.
 - Use the generator validation command before finishing work: `python tools/generate_data_classes.py --check --check-seeds`.

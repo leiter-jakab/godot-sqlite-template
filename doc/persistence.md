@@ -1,6 +1,9 @@
 ## Addons
 
-- [godot-sqlite](https://github.com/2shady4u/godot-sqlite)
+- [godot-sqlite](https://github.com/2shady4u/godot-sqlite) is vendored in `addons/godot-sqlite/` and provides the runtime SQLite extension.
+- [GUT](https://github.com/bitwes/Gut) is vendored in `addons/gut/` and provides the project's test framework; it is not used by runtime persistence code.
+
+Both addons are included in the repository; no separate download is needed. Preserve their upstream license and notice files when updating them.
 
 ## Persistence architecture
 
