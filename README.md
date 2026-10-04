@@ -23,16 +23,19 @@ Keep the upstream license and notice files when updating either addon.
 │   └── seed/                  # Default or test JSON seed data
 ├── doc/                       # Project documentation
 ├── scenes/                     # Godot scenes and UI layouts
-├── src/
-│   ├── main.gd                # App bootstrap and state orchestration
-│   ├── game_manager.gd       # Save-game helpers and database entry points
-│   ├── actors/                # Actor logic
-│   ├── items/                 # Item logic
-│   ├── levels/                # Level/gameplay logic
-│   ├── persistence/           # SQLite manager and generated persistence layer
-│   ├── states/                # Gameplay lifecycle state machine
-│   └── ui/                    # UI scripts and screens
+├── scripts/
+│   ├── game/
+│   │   ├── main.gd            # App bootstrap and state orchestration
+│   │   ├── game_manager.gd    # Save-game helpers and database entry points
+│   │   ├── actors/            # Actor logic
+│   │   ├── items/             # Item logic
+│   │   ├── levels/            # Level/gameplay logic
+│   │   ├── persistence/       # SQLite manager and generated persistence layer
+│   │   ├── states/            # Gameplay lifecycle state machine
+│   │   └── ui/                # UI scripts and screens
+│   └── test/                  # GUT tests for game scripts
 ├── tools/
+│   ├── test/                      # Python tests for the tool scripts
 │   ├── generate_data_classes.py # Schema-to-GDScript generator
 │   └── merge_schema_fragments.py # Optional schema fragment merger
 ├── project.godot              # Godot project configuration
@@ -46,10 +49,11 @@ Keep the upstream license and notice files when updating either addon.
 
 - `data/schema/<name>/schema.json` is the database design consumed by runtime; optional fragments can be merged into it.
 - `tools/generate_data_classes.py` converts that schema into typed persistence classes and repository helpers.
-- `src/persistence/` contains the runtime SQLite manager and generated data access layer.
-- `src/states/` contains the game flow states such as menu, gameplay, and paused gameplay.
+- `scripts/test/` contains GUT tests for game code, while `tools/test/` contains Python tests for the tooling.
+- `scripts/game/persistence/` contains the runtime SQLite manager and generated data access layer.
+- `scripts/game/states/` contains the game flow states such as menu, gameplay, and paused gameplay.
 - `scenes/` contains the Godot scene files that define UI and gameplay layout.
-- `src/main.gd` wires the application together and swaps states via the main state machine.
+- `scripts/game/main.gd` wires the application together and swaps states via the main state machine.
 
 ## Runtime flow
 
@@ -64,7 +68,7 @@ The template follows a simple high-level flow:
 ## Conventions
 
 - Keep persistence changes schema-driven rather than hand-writing ad hoc SQL in gameplay code.
-- Treat generated files under `src/persistence/data_generated/` as build artifacts.
+- Treat generated files under `scripts/game/persistence/data_generated/` as build artifacts.
 - Prefer small, explicit state and script responsibilities over mixing UI, logic, and database code.
 - Use the existing game-state pattern instead of introducing a different flow model.
 

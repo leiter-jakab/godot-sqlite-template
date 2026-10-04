@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = REPO_ROOT / "src" / "persistence" / "data_generated"
+DATA_DIR = REPO_ROOT / "scripts" / "game" / "persistence" / "data_generated"
 SCHEMA_PATH = REPO_ROOT / "data" / "schema" / "game" / "schema.json"
 SEED_DIR = REPO_ROOT / "data" / "seed"
 EDITORCONFIG_PATH = REPO_ROOT / ".editorconfig"

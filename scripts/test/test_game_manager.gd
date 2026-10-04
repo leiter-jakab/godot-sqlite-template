@@ -2,7 +2,7 @@ extends GutTest
 
 
 class PersistenceManagerStub:
-    extends "res://src/persistence/persistence_manager.gd"
+    extends "res://scripts/game/persistence/persistence_manager.gd"
 
     var initialize_count := 0
     var initialized_schema := ""

@@ -27,13 +27,16 @@ This design keeps data access predictable and avoids hand-writing repetitive dat
 │   │       ├── schema.json         # Schema contract consumed by runtime and generator
 │   │       └── fragments/          # Optional source fragments for schema generation
 │   └── seed/                      # Seed JSON loaded into new databases
-├── src/
-│   ├── game_manager.gd            # Save-game helper API
-│   ├── persistence/
-│   │   ├── persistence_manager.gd  # Database creation, schema application, seed loading
-│   │   └── data_generated/        # Generated classes and repository
-│   └── states/                    # State-driven gameplay flow
+├── scripts/
+│   ├── game/
+│   │   ├── game_manager.gd            # Save-game helper API
+│   │   ├── persistence/
+│   │   │   ├── persistence_manager.gd  # Database creation, schema application, seed loading
+│   │   │   └── data_generated/        # Generated classes and repository
+│   │   └── states/                    # State-driven gameplay flow
+│   └── test/                          # GUT tests for game scripts
 ├── tools/
+│   ├── test/                     # Python tests for the tool scripts
 │   └── generate_data_classes.py   # Schema validator and code generator
 └── project.godot
 ```
@@ -83,7 +86,7 @@ Check generated classes and seed files against the schema with:
 python tools/generate_data_classes.py --check --check-seeds
 ```
 
-Generated persistence code is written to `src/persistence/data_generated/`; the directory is created automatically if it is missing. In fragment mode, `data/schema/<schema-name>/schema.json` is also generated and should not be edited directly. Do not edit generated persistence code by hand.
+Generated persistence code is written to `scripts/game/persistence/data_generated/`; the directory is created automatically if it is missing. In fragment mode, `data/schema/<schema-name>/schema.json` is also generated and should not be edited directly. Do not edit generated persistence code by hand.
 
 ## Seed data
 

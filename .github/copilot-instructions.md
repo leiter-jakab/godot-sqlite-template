@@ -6,10 +6,10 @@ This repository is a Godot 4 template for building games that need SQLite-backed
 
 The important pieces are:
 
-- `src/main.gd` is the app entry point and orchestrates the state machine.
-- `src/states/` contains the gameplay lifecycle states.
-- `src/persistence/persistence_manager.gd` manages SQLite database creation, schema application, and seed loading.
-- `src/game_manager.gd` exposes save-game creation and retrieval helpers.
+- `scripts/game/main.gd` is the app entry point and orchestrates the state machine.
+- `scripts/game/states/` contains the gameplay lifecycle states.
+- `scripts/game/persistence/persistence_manager.gd` manages SQLite database creation, schema application, and seed loading.
+- `scripts/game/game_manager.gd` exposes save-game creation and retrieval helpers.
 - `data/schema/<name>/schema.json` is the canonical persistence contract; optional fragments live under that schema directory.
 - `tools/generate_data_classes.py` creates typed persistence classes and the repository layer.
 
@@ -22,7 +22,7 @@ The important pieces are:
 - Without fragments, edit `schema.json` directly. With fragments, treat `schema.json` as generated output.
 - After changing the schema, regenerate persistence code with `python tools/generate_data_classes.py`.
 - Use the generator validation command before finishing work: `python tools/generate_data_classes.py --check --check-seeds`.
-- Do not hand-edit files under `src/persistence/data_generated/`; they are generated artifacts.
+- Do not hand-edit files under `scripts/game/persistence/data_generated/`; they are generated artifacts.
 - Keep gameplay code using the generated repository API rather than writing custom database logic in state or UI scripts.
 - Follow the existing Godot state pattern instead of creating a different flow control model.
 
@@ -30,11 +30,13 @@ The important pieces are:
 
 - Follow the applicable `.editorconfig` settings for all code you create, modify, or generate.
 - Prefer small, explicit Godot scripts with typed properties and clear naming.
-- Preserve the current folder structure: scenes in `scenes/`, runtime logic in `src/`, data contracts in `data/`, and generator tools in `tools/`.
+- Preserve the current folder structure: scenes in `scenes/`, game logic and tests in `scripts/game/` and `scripts/test/`, data contracts in `data/`, and generator tools and their tests in `tools/` and `tools/test/`.
 - When adding a new runtime feature, keep the UI, state changes, and persistence responsibilities separated.
 - Seed files in `data/seed/` should stay valid for the schema and should reflect realistic default data for new games.
 
 ## Verification before completion
+
+- On Windows, locate and invoke `Godot_v4.7.2-stable_win64_console.exe` for Godot engine commands instead of assuming `godot` is on `PATH`.
 
 For persistence-related changes, validate the schema and seed data with:
 
