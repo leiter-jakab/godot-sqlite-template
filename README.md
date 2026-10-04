@@ -33,7 +33,8 @@ Keep the upstream license and notice files when updating either addon.
 │   ├── states/                # Gameplay lifecycle state machine
 │   └── ui/                    # UI scripts and screens
 ├── tools/
-│   └── generate_data_classes.py # Schema-to-GDScript generator
+│   ├── generate_data_classes.py # Schema-to-GDScript generator
+│   └── merge_schema_fragments.py # Optional schema fragment merger
 ├── project.godot              # Godot project configuration
 ├── README.md
 ├── .github/
@@ -43,7 +44,7 @@ Keep the upstream license and notice files when updating either addon.
 
 ## How the project is organized
 
-- `data/schema/` is the source of truth for the database design.
+- `data/schema/<name>/schema.json` is the database design consumed by runtime; optional fragments can be merged into it.
 - `tools/generate_data_classes.py` converts that schema into typed persistence classes and repository helpers.
 - `src/persistence/` contains the runtime SQLite manager and generated data access layer.
 - `src/states/` contains the game flow states such as menu, gameplay, and paused gameplay.

@@ -10,14 +10,16 @@ The important pieces are:
 - `src/states/` contains the gameplay lifecycle states.
 - `src/persistence/persistence_manager.gd` manages SQLite database creation, schema application, and seed loading.
 - `src/game_manager.gd` exposes save-game creation and retrieval helpers.
-- `data/schema/game.json` is the canonical persistence contract.
+- `data/schema/<name>/schema.json` is the canonical persistence contract; optional fragments live under that schema directory.
 - `tools/generate_data_classes.py` creates typed persistence classes and the repository layer.
 
 ## Working rules
 
 - Treat `addons/godot-sqlite/` and `addons/gut/` as vendored third-party dependencies; do not ask contributors to fetch them separately while they remain in the repository.
 - When updating a vendored addon, preserve its upstream license and notice files and record the upstream source/version or commit in the change description.
-- Treat `data/schema/game.json` as the source of truth for database structure.
+- Treat `data/schema/<name>/schema.json` as the schema contract consumed by runtime and code generation.
+- Optional fragments live in `data/schema/<name>/fragments/`; when present, merge them into `schema.json` with `python tools/merge_schema_fragments.py` before generating persistence code.
+- Without fragments, edit `schema.json` directly. With fragments, treat `schema.json` as generated output.
 - After changing the schema, regenerate persistence code with `python tools/generate_data_classes.py`.
 - Use the generator validation command before finishing work: `python tools/generate_data_classes.py --check --check-seeds`.
 - Do not hand-edit files under `src/persistence/data_generated/`; they are generated artifacts.
@@ -54,8 +56,9 @@ If a change affects gameplay flow, confirm the state transitions still make sens
 When implementing a new feature:
 
 1. Check the schema and persistence contract before writing the runtime code.
-2. Update `data/schema/game.json` if the data model changes.
-3. Regenerate the typed data classes.
-4. Update seed data if required.
-5. Wire the repository into the gameplay logic.
-6. Run the project-specific validation command.
+2. Update `data/schema/game/schema.json`, or its fragments if using fragment mode, when the data model changes.
+3. If schema fragments are used, merge them with `python tools/merge_schema_fragments.py`.
+4. Regenerate the typed data classes.
+5. Update seed data if required.
+6. Wire the repository into the gameplay logic.
+7. Run the project-specific validation command.
