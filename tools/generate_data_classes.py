@@ -13,7 +13,7 @@ from typing import Any, Dict
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "src" / "persistence" / "data_generated"
-SCHEMA_PATH = REPO_ROOT / "data" / "schema" / "game.json"
+SCHEMA_PATH = REPO_ROOT / "data" / "schema" / "game" / "schema.json"
 SEED_DIR = REPO_ROOT / "data" / "seed"
 EDITORCONFIG_PATH = REPO_ROOT / ".editorconfig"
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

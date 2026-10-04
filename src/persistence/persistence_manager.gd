@@ -163,8 +163,8 @@ func _build_schema_path(schema_name: String) -> String:
     if normalized_name.is_empty():
         return ""
     if normalized_name.ends_with(".json"):
-        return SCHEMA_DIRECTORY + normalized_name
-    return SCHEMA_DIRECTORY + normalized_name + ".json"
+        normalized_name = normalized_name.trim_suffix(".json")
+    return SCHEMA_DIRECTORY + normalized_name + "/schema.json"
 
 
 func _build_seed_path(seed_name: String) -> String:

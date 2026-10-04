@@ -9,7 +9,7 @@ Both addons are included in the repository; no separate download is needed. Pres
 
 This template uses a schema-first persistence pipeline:
 
-1. The canonical database contract lives in `data/schema/game.json`.
+1. The canonical database contract lives in `data/schema/game/schema.json`.
 2. `tools/generate_data_classes.py` validates that schema and emits typed GDScript models.
 3. A generated `DataRepository` exposes table-specific queries such as `get_example_by_id()` and `get_all_examples()`.
 4. `PersistenceManager` opens the SQLite database, applies the schema, and loads seed data.
@@ -22,7 +22,10 @@ This design keeps data access predictable and avoids hand-writing repetitive dat
 ```text
 .
 ├── data/
-│   ├── schema/game.json            # Source-of-truth schema contract
+│   ├── schema/
+│   │   └── game/
+│   │       ├── schema.json         # Schema contract consumed by runtime and generator
+│   │       └── fragments/          # Optional source fragments for schema generation
 │   └── seed/                      # Seed JSON loaded into new databases
 ├── src/
 │   ├── game_manager.gd            # Save-game helper API
@@ -37,7 +40,9 @@ This design keeps data access predictable and avoids hand-writing repetitive dat
 
 ## Schema source of truth
 
-`data/schema/game.json` defines every table, field, and primary-key metadata. Each field has a `data_type` and may flag `primary_key`, `not_null`, and foreign-key metadata. The generator enforces a simple schema contract so the repo stays consistent.
+`data/schema/<schema-name>/schema.json` defines every table, field, and primary-key metadata. Each field has a `data_type` and may flag `primary_key`, `not_null`, and foreign-key metadata. The generator enforces a simple schema contract so the repo stays consistent.
+
+Fragmented schemas are optional. When `data/schema/<schema-name>/fragments/` contains JSON files, `tools/merge_schema_fragments.py` combines their `tables` objects into that schema directory's `schema.json`. Fragments are processed in filename order and each table must be defined in exactly one fragment. In fragment mode, `schema.json` is generated output; without fragments, it can be edited directly. The persistence manager always reads only `schema.json`.
 
 Example structure:
 
@@ -60,7 +65,13 @@ Example structure:
 
 ## Regenerating persistence code
 
-After changing the schema, regenerate the typed files and repository with:
+When using schema fragments, merge them first:
+
+```sh
+python tools/merge_schema_fragments.py
+```
+
+The merge command is optional when editing `schema.json` directly. For another schema directory, pass `--schema-dir data/schema/<name>`. After changing the schema, regenerate the typed files and repository with:
 
 ```sh
 python tools/generate_data_classes.py
@@ -72,7 +83,7 @@ Check generated classes and seed files against the schema with:
 python tools/generate_data_classes.py --check --check-seeds
 ```
 
-Generated output is written to `src/persistence/data_generated/`; the directory is created automatically if it is missing. Do not edit generated files directly.
+Generated persistence code is written to `src/persistence/data_generated/`; the directory is created automatically if it is missing. In fragment mode, `data/schema/<schema-name>/schema.json` is also generated and should not be edited directly. Do not edit generated persistence code by hand.
 
 ## Seed data
 
@@ -91,7 +102,8 @@ var examples := repository.get_all_examples()
 
 ## Agent and contributor guidance
 
-- Update `data/schema/game.json` before touching generated persistence files.
+- Update `data/schema/game/schema.json`, or the optional files under `data/schema/game/fragments/`, before regenerating persistence files.
+- When fragments are used, run `python tools/merge_schema_fragments.py` before `python tools/generate_data_classes.py`.
 - Prefer regenerating typed classes instead of patching generated output by hand.
 - When adding or changing tables, also review matching seed JSON files for validity.
 - Keep repository usage aligned with the generated API names rather than inventing bespoke SQL queries in gameplay code.

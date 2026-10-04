@@ -1,0 +1,17 @@
+{
+  "tables": {
+    "example1": {
+      "id": {
+        "data_type": "text",
+        "primary_key": true
+      },
+      "name": {
+        "data_type": "text",
+        "not_null": true
+      },
+      "date": {
+        "data_type": "integer"
+      }
+    }
+  }
+}
