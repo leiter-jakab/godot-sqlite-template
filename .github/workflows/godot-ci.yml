@@ -23,4 +23,4 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Run GUT tests
-        run: godot --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+        run: godot --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://scripts/test -gexit
