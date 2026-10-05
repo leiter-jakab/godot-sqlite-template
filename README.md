@@ -20,7 +20,8 @@ Keep the upstream license and notice files when updating either addon.
 │   └── gut/                  # GUT test framework
 ├── data/
 │   ├── schema/                # Canonical database schema files
-│   └── seed/                  # Numbered JSON fragments grouped by seed identifier
+│   ├── seed/                  # Default or test JSON seed data
+│   └── database/              # Generated SQLite template copied into new saves
 ├── doc/                       # Project documentation
 ├── scenes/                     # Godot scenes and UI layouts
 ├── scripts/
@@ -47,7 +48,8 @@ Keep the upstream license and notice files when updating either addon.
 
 ## How the project is organized
 
-- `data/schema/<name>/schema.json` is the database design consumed by runtime; optional fragments can be merged into it.
+- `data/schema/` is the source of truth for the database design.
+- `tools/build_seed_database.py` builds a populated SQLite template from the schema and seed JSON.
 - `tools/generate_data_classes.py` converts that schema into typed persistence classes and repository helpers.
 - `scripts/test/` contains GUT tests for game code, while `tools/test/` contains Python tests for the tooling.
 - `scripts/game/persistence/` contains the runtime SQLite manager and generated data access layer.
@@ -61,7 +63,7 @@ The template follows a simple high-level flow:
 
 1. `Main` boots the app and creates the game manager and persistence layer.
 2. The app loads UI scenes and enters the initial state.
-3. `GameManager` and `PersistenceManager` create or open SQLite databases.
+3. `GameManager` asks `PersistenceManager` to copy the populated database template into a new user save, or open an existing save.
 4. State scripts control transitions between menu, gameplay, and pause flows.
 5. Generated data classes and repository functions provide typed access to save data.
 

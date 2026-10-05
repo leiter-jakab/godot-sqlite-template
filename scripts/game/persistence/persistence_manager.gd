@@ -5,6 +5,7 @@ class_name PersistenceManager
 const SCHEMA_DIRECTORY := "res://data/schema/"
 const SEED_DIRECTORY := "res://data/seed/"
 const DATABASE_DIRECTORY := "user://"
+const TEMPLATE_DATABASE_PATH := "res://data/database/game_template.db"
 
 var _database_cache: Dictionary = {}
 
@@ -20,24 +21,67 @@ func initialize_database(schema_name: String, db_name: String = "") -> SQLite:
 
     var db_path := _build_database_path(resolved_db_name)
     var schema_path := _build_schema_path(schema_name)
-    var database := SQLite.new()
-    database.path = db_path
-
-    if not database.open_db():
-        push_error("Failed to open SQLite database at %s: %s" % [db_path, database.error_message])
-        return null
-
-    database.foreign_keys = true
-    if not database.query("PRAGMA foreign_keys = ON;"):
-        push_error("Failed to enable foreign key enforcement: %s" % database.error_message)
+    var database := _open_database(resolved_db_name, db_path)
+    if database == null:
         return null
 
     if not _apply_schema(database, schema_path):
         push_error("Failed to initialize schema for %s from %s." % [resolved_db_name, schema_path])
+        database.close_db()
+        _database_cache.erase(resolved_db_name)
         return null
 
-    _database_cache[resolved_db_name] = database
     print("SQLite database initialized at %s" % ProjectSettings.globalize_path(db_path))
+    return database
+
+
+func create_database_from_template(db_name: String, template_path: String = TEMPLATE_DATABASE_PATH) -> SQLite:
+    var resolved_db_name := _normalize_database_name(db_name)
+    if resolved_db_name.is_empty():
+        push_error("Database name cannot be empty.")
+        return null
+
+    var db_path := _build_database_path(resolved_db_name)
+    if _database_cache.has(resolved_db_name) or FileAccess.file_exists(db_path):
+        push_error("Database already exists at %s." % db_path)
+        return null
+
+    if not FileAccess.file_exists(template_path):
+        push_error("Template database does not exist at %s." % template_path)
+        return null
+    var template_bytes := FileAccess.get_file_as_bytes(template_path)
+    if template_bytes.is_empty():
+        push_error("Template database is empty or could not be read at %s." % template_path)
+        return null
+
+    var temporary_path := db_path + ".tmp"
+    var temporary_file := FileAccess.open(temporary_path, FileAccess.WRITE)
+    if temporary_file == null:
+        push_error("Unable to create database copy at %s: %s" % [temporary_path, FileAccess.get_open_error()])
+        return null
+    temporary_file.store_buffer(template_bytes)
+    temporary_file.flush()
+    var write_error := temporary_file.get_error()
+    temporary_file.close()
+    if write_error != OK:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+        push_error("Failed to write database copy at %s." % temporary_path)
+        return null
+
+    var rename_error := DirAccess.rename_absolute(
+        ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(db_path)
+    )
+    if rename_error != OK:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+        push_error("Failed to move database copy into place at %s." % db_path)
+        return null
+
+    var database := _open_database(resolved_db_name, db_path)
+    if database == null:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(db_path))
+        return null
+
+    print("Created SQLite database from template at %s" % ProjectSettings.globalize_path(db_path))
     return database
 
 
@@ -75,7 +119,11 @@ func get_database_handle(schema_name: String, db_name: String = "") -> SQLite:
     if _database_cache.has(resolved_db_name):
         return _database_cache[resolved_db_name]
 
-    return initialize_database(schema_name, resolved_db_name)
+    var db_path := _build_database_path(resolved_db_name)
+    if not FileAccess.file_exists(db_path):
+        push_error("Database does not exist at %s." % db_path)
+        return null
+    return _open_database(resolved_db_name, db_path)
 
 
 func get_existing_databases() -> Array[String]:
@@ -193,6 +241,23 @@ func _apply_schema(database: SQLite, schema_path: String) -> bool:
             return false
 
     return true
+
+
+func _open_database(db_name: String, db_path: String) -> SQLite:
+    var database := SQLite.new()
+    database.path = db_path
+    if not database.open_db():
+        push_error("Failed to open SQLite database at %s: %s" % [db_path, database.error_message])
+        return null
+
+    database.foreign_keys = true
+    if not database.query("PRAGMA foreign_keys = ON;"):
+        push_error("Failed to enable foreign key enforcement: %s" % database.error_message)
+        database.close_db()
+        return null
+
+    _database_cache[db_name] = database
+    return database
 
 
 func _build_database_path(db_name: String) -> String:

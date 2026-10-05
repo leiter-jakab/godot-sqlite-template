@@ -4,14 +4,10 @@ extends GutTest
 class PersistenceManagerStub:
     extends "res://scripts/game/persistence/persistence_manager.gd"
 
-    var initialize_count := 0
-    var initialized_schema := ""
-    var initialized_database_name := ""
+    var template_copy_count := 0
+    var copied_database_name := ""
+    var copied_template_path := ""
     var database_result: SQLite
-    var seed_load_count := 0
-    var seeded_database: SQLite
-    var loaded_seed_name := ""
-    var seed_result := true
     var handle_lookup_count := 0
     var looked_up_schema := ""
     var looked_up_database_name := ""
@@ -20,17 +16,11 @@ class PersistenceManagerStub:
     var deleted_database_name := ""
     var delete_result := false
 
-    func initialize_database(schema_name: String, db_name: String = "") -> SQLite:
-        initialize_count += 1
-        initialized_schema = schema_name
-        initialized_database_name = db_name
+    func create_database_from_template(db_name: String, template_path: String = TEMPLATE_DATABASE_PATH) -> SQLite:
+        template_copy_count += 1
+        copied_database_name = db_name
+        copied_template_path = template_path
         return database_result
-
-    func load_seed(database: SQLite, seed_name: String) -> bool:
-        seed_load_count += 1
-        seeded_database = database
-        loaded_seed_name = seed_name
-        return seed_result
 
     func get_database_handle(schema_name: String, db_name: String = "") -> SQLite:
         handle_lookup_count += 1
@@ -57,35 +47,22 @@ func before_each() -> void:
     _game_manager = GameManager.new(_persistence_manager)
 
 
-func test_start_new_game_normalizes_name_and_loads_seed() -> void:
+func test_start_new_game_normalizes_name_and_copies_template() -> void:
     var result := _game_manager.start_new_game(" slot_1.db ")
 
     assert_eq(result, _database)
-    assert_eq(_persistence_manager.initialized_schema, "game")
-    assert_eq(_persistence_manager.initialized_database_name, "slot_1")
-    assert_eq(_persistence_manager.seeded_database, _database)
-    assert_eq(_persistence_manager.loaded_seed_name, "game_test")
-    assert_eq(_persistence_manager.initialize_count, 1)
-    assert_eq(_persistence_manager.seed_load_count, 1)
+    assert_eq(_persistence_manager.copied_database_name, "slot_1")
+    assert_eq(_persistence_manager.copied_template_path, PersistenceManager.TEMPLATE_DATABASE_PATH)
+    assert_eq(_persistence_manager.template_copy_count, 1)
 
 
-func test_start_new_game_returns_null_when_initialization_fails() -> void:
+func test_start_new_game_returns_null_when_template_copy_fails() -> void:
     _persistence_manager.database_result = null
 
     var result := _game_manager.start_new_game("slot_1")
 
     assert_null(result)
-    assert_eq(_persistence_manager.initialize_count, 1)
-    assert_eq(_persistence_manager.seed_load_count, 0)
-
-
-func test_start_new_game_returns_database_when_seed_loading_fails() -> void:
-    _persistence_manager.seed_result = false
-
-    var result := _game_manager.start_new_game("slot_1")
-
-    assert_eq(result, _database)
-    assert_eq(_persistence_manager.seed_load_count, 1)
+    assert_eq(_persistence_manager.template_copy_count, 1)
 
 
 func test_load_existing_game_normalizes_name() -> void:

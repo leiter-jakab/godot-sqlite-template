@@ -13,11 +13,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       - name: Set up Godot
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.7.2
           use-dotnet: false
+
+      - name: Run Python tool tests
+        run: python -m unittest discover -s tools/test
+
+      - name: Build SQLite template database
+        run: python tools/build_seed_database.py
 
       - name: Import project
         run: godot --headless --editor --path . --quit
