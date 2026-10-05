@@ -3,7 +3,6 @@ extends RefCounted
 class_name GameManager
 
 const GAME_SCHEMA_NAME := "game"
-const GAME_SEED_NAME := "game_test"
 
 var _persistence_manager: PersistenceManager
 
@@ -14,16 +13,7 @@ func start_new_game(game_name: String = "game") -> SQLite:
         push_error("Game name cannot be empty.")
         return null
 
-    var database: SQLite
-    database = _persistence_manager.initialize_database(GAME_SCHEMA_NAME, db_name)
-    if database == null:
-        return null
-
-    if not _persistence_manager.load_seed(database, GAME_SEED_NAME):
-        return database
-
-    print("Loaded seed data into %s" % db_name)
-    return database
+    return _persistence_manager.create_database_from_template(db_name)
 
 
 func load_existing_game(game_name: String) -> SQLite:
