@@ -20,7 +20,7 @@ Keep the upstream license and notice files when updating either addon.
 │   └── gut/                  # GUT test framework
 ├── data/
 │   ├── schema/                # Canonical database schema files
-│   └── seed/                  # Default or test JSON seed data
+│   └── seed/                  # Numbered JSON fragments grouped by seed identifier
 ├── doc/                       # Project documentation
 ├── scenes/                     # Godot scenes and UI layouts
 ├── scripts/

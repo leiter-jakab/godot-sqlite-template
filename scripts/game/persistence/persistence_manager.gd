@@ -99,33 +99,77 @@ func load_seed(database: SQLite, seed_name: String) -> bool:
         push_error("Database handle cannot be null.")
         return false
 
-    var seed_path := _build_seed_path(seed_name)
-    var file := FileAccess.open(seed_path, FileAccess.READ)
-    if file == null:
-        push_error("Unable to open seed file at %s: %s" % [seed_path, FileAccess.get_open_error()])
+    var seed_directory_path := _build_seed_path(seed_name)
+    var seed_paths := _get_ordered_seed_paths(seed_directory_path)
+    if seed_paths.is_empty():
+        push_error("No seed JSON fragments found in %s." % seed_directory_path)
         return false
 
-    var raw_text := file.get_as_text()
-    file.close()
+    for seed_path in seed_paths:
+        var file := FileAccess.open(seed_path, FileAccess.READ)
+        if file == null:
+            push_error("Unable to open seed file at %s: %s" % [seed_path, FileAccess.get_open_error()])
+            return false
+        var raw_text := file.get_as_text()
+        file.close()
 
-    var parsed = JSON.parse_string(raw_text)
-    if typeof(parsed) != TYPE_DICTIONARY:
-        push_error("Seed file must contain a JSON object at %s" % seed_path)
-        return false
+        var parsed = JSON.parse_string(raw_text)
+        if typeof(parsed) != TYPE_DICTIONARY:
+            push_error("Seed file must contain a JSON object at %s" % seed_path)
+            return false
 
-    for collection_key in parsed.keys():
-        var rows: Array = parsed[collection_key]
-        if typeof(rows) != TYPE_ARRAY:
-            continue
-        for row in rows:
-            if typeof(row) != TYPE_DICTIONARY:
+        for collection_key in parsed.keys():
+            var rows: Array = parsed[collection_key]
+            if typeof(rows) != TYPE_ARRAY:
                 continue
-            if not database.insert_row(collection_key, row):
-                push_error("Failed to insert seed row into %s: %s" % [collection_key, database.error_message])
-                return false
+            for row in rows:
+                if typeof(row) != TYPE_DICTIONARY:
+                    continue
+                if not database.insert_row(collection_key, row):
+                    push_error("Failed to insert seed row into %s: %s" % [collection_key, database.error_message])
+                    return false
 
-    print("Loaded seed data from %s" % seed_path)
+    print("Loaded seed data from %s" % seed_directory_path)
     return true
+
+
+func _get_ordered_seed_paths(seed_directory_path: String) -> Array[String]:
+    var seed_paths: Array[String] = []
+    var directory := DirAccess.open(seed_directory_path)
+    if directory == null:
+        push_error("Unable to open seed directory at %s." % seed_directory_path)
+        return seed_paths
+
+    var prefix_regex := RegEx.new()
+    prefix_regex.compile("^(\\d+)_")
+    var filenames_by_number: Dictionary = {}
+    for filename in directory.get_files():
+        if not filename.ends_with(".json"):
+            continue
+        var prefix_match := prefix_regex.search(filename)
+        if prefix_match == null:
+            push_error("Seed fragment filename must start with a numeric prefix followed by '_': %s" % filename)
+            return []
+        var fragment_number := prefix_match.get_string(1).to_int()
+        if filenames_by_number.has(fragment_number):
+            push_error(
+                "Duplicate seed fragment number %d in %s: %s and %s" % [
+                    fragment_number,
+                    seed_directory_path,
+                    filenames_by_number[fragment_number],
+                    filename,
+                ]
+            )
+            return []
+        filenames_by_number[fragment_number] = filename
+
+    var fragment_numbers: Array[int] = []
+    for fragment_number in filenames_by_number.keys():
+        fragment_numbers.append(fragment_number)
+    fragment_numbers.sort()
+    for fragment_number in fragment_numbers:
+        seed_paths.append(seed_directory_path.path_join(filenames_by_number[fragment_number]))
+    return seed_paths
 
 
 func _apply_schema(database: SQLite, schema_path: String) -> bool:
@@ -172,8 +216,8 @@ func _build_seed_path(seed_name: String) -> String:
     if normalized_name.is_empty():
         return ""
     if normalized_name.ends_with(".json"):
-        return SEED_DIRECTORY + normalized_name
-    return SEED_DIRECTORY + normalized_name + ".json"
+        normalized_name = normalized_name.trim_suffix(".json")
+    return SEED_DIRECTORY + normalized_name.replace("_", "/") + "/"
 
 
 func _normalize_database_name(db_name: String) -> String:

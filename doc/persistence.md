@@ -90,7 +90,9 @@ Generated persistence code is written to `scripts/game/persistence/data_generate
 
 ## Seed data
 
-Seed files live under `data/seed/` and are loaded by `PersistenceManager` when a new database is initialized. They must match the shape defined by the schema. If you change table names or fields, update the corresponding seed JSON and validate it with the generator check.
+Seed files live in directories under `data/seed/`, with each seed identifier represented by its path segments. For example, the `game_test` identifier resolves to `data/seed/game/test/`. Each directory can contain multiple JSON fragments named with a numeric prefix and underscore, such as `01_examples.json`; fragments load in ascending numeric order. Leading zeros are ignored when ordering, so prefixes `01` and `1` have the same value and cannot both appear in one seed directory.
+
+Every JSON fragment must begin with a numeric prefix followed by `_`, contain a top-level object, and match the schema. The generator recursively validates nested seed directories and rejects flat JSON files directly under `data/seed/`, malformed prefixes, and duplicate numeric prefixes. Run `python tools/generate_data_classes.py --check --check-seeds` after changing seed data.
 
 ## Repository usage
 
