@@ -1,0 +1,14 @@
+{
+  "example2": [
+    {
+      "id": 1,
+      "example1": "example_01",
+      "value": 10.5
+    },
+    {
+      "id": 2,
+      "example1": "example_02",
+      "value": 7.25
+    }
+  ]
+}

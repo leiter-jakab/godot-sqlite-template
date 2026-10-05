@@ -312,10 +312,44 @@ def validate_seed_against_schema(
                 )
 
 
+def _seed_fragment_number(seed_path: Path) -> int:
+    match = re.match(r"^(\d+)_", seed_path.name)
+    if match is None:
+        raise ValueError(
+            f"Seed fragment filename must start with a numeric prefix followed by '_': {seed_path}"
+        )
+    return int(match.group(1))
+
+
+def _ordered_seed_fragments(seed_dir: Path) -> list[Path]:
+    fragments_by_directory: Dict[Path, list[tuple[int, Path]]] = {}
+    for seed_path in sorted(seed_dir.rglob("*.json")):
+        if seed_path.parent == seed_dir:
+            raise ValueError(f"Seed JSON files must be inside a seed directory: {seed_path}")
+        fragment_number = _seed_fragment_number(seed_path)
+        fragments_by_directory.setdefault(seed_path.parent, []).append((fragment_number, seed_path))
+
+    ordered_fragments: list[Path] = []
+    for fragment_directory in sorted(fragments_by_directory):
+        numbered_fragments = fragments_by_directory[fragment_directory]
+        seen_numbers: Dict[int, Path] = {}
+        for fragment_number, seed_path in numbered_fragments:
+            if fragment_number in seen_numbers:
+                raise ValueError(
+                    f"Duplicate seed fragment number {fragment_number} in {fragment_directory}: "
+                    f"{seen_numbers[fragment_number].name} and {seed_path.name}"
+                )
+            seen_numbers[fragment_number] = seed_path
+        ordered_fragments.extend(
+            seed_path for _, seed_path in sorted(numbered_fragments, key=lambda item: (item[0], item[1].name))
+        )
+    return ordered_fragments
+
+
 def validate_seed_files(tables: Dict[str, Dict[str, Dict[str, Any]]], seed_dir: Path) -> None:
     if not seed_dir.exists():
         return
-    for seed_path in sorted(seed_dir.glob("*.json")):
+    for seed_path in _ordered_seed_fragments(seed_dir):
         validate_seed_against_schema(tables, load_json_file(seed_path), seed_path)
 
 
@@ -349,6 +383,7 @@ def main() -> int:
         schema = load_json_file(args.schema)
         tables = validate_schema(schema)
         if args.seed_file:
+            _seed_fragment_number(args.seed_file)
             validate_seed_against_schema(tables, load_json_file(args.seed_file), args.seed_file)
             print(f"Seed file is valid for schema contract: {args.seed_file}")
             return 0
