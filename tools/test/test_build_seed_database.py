@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import subprocess
 import sys
@@ -56,9 +57,58 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_default_seed_directory_builds_all_fragments(self) -> None:
+    def test_builds_when_referenced_table_follows_child(self) -> None:
+        reversed_tables = validate_schema(
+            {"tables": {"child": SCHEMA["tables"]["child"], "parent": SCHEMA["tables"]["parent"]}}
+        )
+
+        build_database(reversed_tables, SEED_DATA, self.output_path)
+
+        connection = sqlite3.connect(self.output_path)
+        try:
+            self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [("parent_1",)])
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+        finally:
+            connection.close()
+
+    def test_cli_builds_from_schema_and_all_seed_fragments(self) -> None:
+        temporary_directory = Path(self.temporary_directory.name)
+        schema_path = temporary_directory / "schema.json"
+        seed_directory = temporary_directory / "seed"
+        seed_directory.mkdir()
+        schema_path.write_text(
+            json.dumps(
+                {
+                    "tables": {
+                        "entry": {
+                            "id": {"data_type": "integer", "primary_key": True},
+                            "value": {"data_type": "text", "not_null": True},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        (seed_directory / "02_second.json").write_text(
+            json.dumps({"entry": [{"id": 2, "value": "second"}]}),
+            encoding="utf-8",
+        )
+        (seed_directory / "01_first.json").write_text(
+            json.dumps({"entry": [{"id": 1, "value": "first"}]}),
+            encoding="utf-8",
+        )
+
         result = subprocess.run(
-            [sys.executable, str(BUILD_SCRIPT), "--output", str(self.output_path)],
+            [
+                sys.executable,
+                str(BUILD_SCRIPT),
+                "--schema",
+                str(schema_path),
+                "--seed-dir",
+                str(seed_directory),
+                "--output",
+                str(self.output_path),
+            ],
             check=False,
             capture_output=True,
             text=True,
@@ -68,8 +118,10 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         connection = sqlite3.connect(self.output_path)
         try:
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM example1").fetchone(), (2,))
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM example2").fetchone(), (2,))
+            self.assertEqual(
+                connection.execute("SELECT value FROM entry ORDER BY id").fetchall(),
+                [("first",), ("second",)],
+            )
         finally:
             connection.close()
 
@@ -78,7 +130,7 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         self.output_path.write_bytes(b"existing database artifact")
         invalid_seed = {"parent": [], "child": [{"id": 1, "parent_id": "missing"}]}
 
-        with self.assertRaises(sqlite3.IntegrityError):
+        with self.assertRaisesRegex(ValueError, "foreign-key violations"):
             build_database(self.tables, invalid_seed, self.output_path)
 
         self.assertEqual(self.output_path.read_bytes(), b"existing database artifact")
