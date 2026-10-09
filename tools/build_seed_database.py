@@ -174,6 +174,7 @@ def build_database(
             connection.execute("PRAGMA foreign_keys = ON;")
             with connection:
                 _create_tables(connection, tables)
+                connection.execute("PRAGMA defer_foreign_keys = ON;")
                 _insert_seed_data(connection, tables, seed_data)
                 foreign_key_errors = connection.execute("PRAGMA foreign_key_check;").fetchall()
                 if foreign_key_errors:
