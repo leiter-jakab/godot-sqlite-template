@@ -141,3 +141,31 @@ func update_example2(data: Example2Data) -> bool:
 func delete_example2_by_id(id: int) -> bool:
     var query := "DELETE FROM example2 WHERE id = ?;"
     return _execute_write(query, [id])
+
+
+func get_all_example2_summary() -> Array[Example2SummaryData]:
+    var items: Array[Example2SummaryData] = []
+    if _database == null:
+        push_error("Cannot query without a database handle.")
+        return items
+    var query := "SELECT * FROM example2_summary;"
+    if not _database.query(query):
+        push_error("Failed to retrieve example2_summary rows: %s" % _database.error_message)
+        return items
+    for row in _database.query_result:
+        items.append(Example2SummaryData.from_row(row))
+    return items
+
+
+func get_example2_summary_by_id(id: int) -> Example2SummaryData:
+    if _database == null:
+        push_error("Cannot query without a database handle.")
+        return null
+    var query := "SELECT * FROM example2_summary WHERE id = ?;"
+    if not _database.query_with_bindings(query, [id]):
+        push_error("Failed to retrieve example2_summary row: %s" % _database.error_message)
+        return null
+    var rows: Array = _database.query_result
+    if rows.is_empty():
+        return null
+    return Example2SummaryData.from_row(rows[0])

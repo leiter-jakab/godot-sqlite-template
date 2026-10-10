@@ -20,8 +20,13 @@ def load_fragment(path: Path) -> dict[str, Any]:
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in {path}: {exc}") from exc
 
-    if not isinstance(fragment, dict) or not isinstance(fragment.get("tables"), dict):
-        raise ValueError(f"Schema fragment {path} must contain a 'tables' object.")
+    if not isinstance(fragment, dict):
+        raise ValueError(f"Schema fragment {path} must contain a 'tables' object or a 'views' object.")
+    if "tables" not in fragment and "views" not in fragment:
+        raise ValueError(f"Schema fragment {path} must contain a 'tables' object or a 'views' object.")
+    for collection_name in ("tables", "views"):
+        if collection_name in fragment and not isinstance(fragment[collection_name], dict):
+            raise ValueError(f"Schema fragment {path} must contain a '{collection_name}' object.")
     return fragment
 
 
@@ -35,17 +40,35 @@ def merge_fragments(schema_directory: Path) -> Path | None:
         return None
 
     tables: dict[str, Any] = {}
+    views: dict[str, Any] = {}
     for fragment_path in fragments:
-        fragment_tables = load_fragment(fragment_path)["tables"]
+        fragment = load_fragment(fragment_path)
+        fragment_tables = fragment.get("tables", {})
+        fragment_views = fragment.get("views", {})
         for table_name, table_fields in fragment_tables.items():
             if table_name in tables:
                 raise ValueError(
                     f"Duplicate table '{table_name}' in schema fragment {fragment_path}."
                 )
             tables[table_name] = table_fields
+        for view_name, view_definition in fragment_views.items():
+            if view_name in views:
+                raise ValueError(
+                    f"Duplicate view '{view_name}' in schema fragment {fragment_path}."
+                )
+            if view_name in tables or view_name in fragment_tables:
+                raise ValueError(f"View '{view_name}' conflicts with a table of the same name.")
+            views[view_name] = view_definition
+        collisions = set(tables).intersection(views)
+        if collisions:
+            collision = sorted(collisions)[0]
+            raise ValueError(f"View '{collision}' conflicts with a table of the same name.")
 
     output_path = schema_directory / "schema.json"
-    output_text = json.dumps({"tables": tables}, indent=2) + "\n"
+    merged_schema: dict[str, Any] = {"tables": tables}
+    if views:
+        merged_schema["views"] = views
+    output_text = json.dumps(merged_schema, indent=2) + "\n"
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(

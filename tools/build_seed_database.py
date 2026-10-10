@@ -19,6 +19,7 @@ if __package__:
         _seed_fragment_number,
         load_json_file,
         validate_schema,
+        validate_views,
         validate_seed_against_schema,
     )
 else:
@@ -29,6 +30,7 @@ else:
         _seed_fragment_number,
         load_json_file,
         validate_schema,
+        validate_views,
         validate_seed_against_schema,
     )
 
@@ -75,6 +77,12 @@ def _create_tables(
             definitions.append(" ".join(definition))
 
         sql = "CREATE TABLE %s (%s);" % (_quote_identifier(table_name), ", ".join(definitions))
+        connection.execute(sql)
+
+
+def _create_views(connection: sqlite3.Connection, views: Dict[str, Dict[str, Any]]) -> None:
+    for view_name, view in views.items():
+        sql = "CREATE VIEW %s AS %s;" % (_quote_identifier(view_name), view["query"])
         connection.execute(sql)
 
 
@@ -158,7 +166,10 @@ def _load_seed_directory(
 
 
 def build_database(
-    tables: Dict[str, Dict[str, Dict[str, Any]]], seed_data: Any, output_path: Path
+    tables: Dict[str, Dict[str, Dict[str, Any]]],
+    seed_data: Any,
+    output_path: Path,
+    views: Dict[str, Dict[str, Any]] | None = None,
 ) -> None:
     validate_seed_against_schema(tables, seed_data)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,6 +187,7 @@ def build_database(
                 _create_tables(connection, tables)
                 connection.execute("PRAGMA defer_foreign_keys = ON;")
                 _insert_seed_data(connection, tables, seed_data)
+                _create_views(connection, views or {})
                 foreign_key_errors = connection.execute("PRAGMA foreign_key_check;").fetchall()
                 if foreign_key_errors:
                     raise ValueError(f"Generated database has foreign-key violations: {foreign_key_errors}")
@@ -208,13 +220,15 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        tables = validate_schema(load_json_file(args.schema))
+        schema = load_json_file(args.schema)
+        tables = validate_schema(schema)
+        views = validate_views(schema, tables)
         seed_data = (
             load_json_file(args.seed_file)
             if args.seed_file is not None
             else _load_seed_directory(tables, args.seed_dir)
         )
-        build_database(tables, seed_data, args.output)
+        build_database(tables, seed_data, args.output, views)
     except (OSError, sqlite3.Error, ValueError) as exc:
         print(f"Database build failed: {exc}")
         return 1

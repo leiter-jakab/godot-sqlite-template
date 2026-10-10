@@ -44,6 +44,39 @@ class MergeSchemaFragmentsTests(unittest.TestCase):
         merged = json.loads((self.schema_directory / "schema.json").read_text(encoding="utf-8"))
         self.assertEqual(list(merged["tables"]), ["first", "last"])
 
+    def test_merges_views_from_fragments(self) -> None:
+        first = {
+            "tables": {"entry": {"id": {"data_type": "integer"}}},
+            "views": {"entry_summary": {"query": "SELECT id FROM entry"}},
+        }
+        (self.fragments_directory / "a_first.json").write_text(json.dumps(first), encoding="utf-8")
+        (self.fragments_directory / "z_view.json").write_text(
+            json.dumps({"views": {"entry_counts": {"query": "SELECT COUNT(*) AS total FROM entry"}}}),
+            encoding="utf-8",
+        )
+
+        result = self.run_merge()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        merged = json.loads((self.schema_directory / "schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(list(merged["views"]), ["entry_summary", "entry_counts"])
+
+    def test_duplicate_view_and_table_view_name_conflicts_fail(self) -> None:
+        (self.fragments_directory / "one.json").write_text(
+            json.dumps({"views": {"shared": {"query": "SELECT 1"}}}), encoding="utf-8"
+        )
+        (self.fragments_directory / "two.json").write_text(
+            json.dumps({"tables": {"shared": {"id": {"data_type": "integer"}}}}), encoding="utf-8"
+        )
+        schema_path = self.schema_directory / "schema.json"
+        schema_path.write_text("original\n", encoding="utf-8")
+
+        result = self.run_merge()
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("conflicts with a table", result.stdout)
+        self.assertEqual(schema_path.read_text(encoding="utf-8"), "original\n")
+
     def test_no_fragments_leaves_existing_schema_unchanged(self) -> None:
         schema_path = self.schema_directory / "schema.json"
         schema_path.write_text('{"tables": {"kept": {}}}\n', encoding="utf-8")

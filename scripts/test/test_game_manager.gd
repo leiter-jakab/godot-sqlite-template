@@ -9,7 +9,6 @@ class PersistenceManagerStub:
     var copied_template_path := ""
     var database_result: SQLite
     var handle_lookup_count := 0
-    var looked_up_schema := ""
     var looked_up_database_name := ""
     var handle_result: SQLite
     var delete_count := 0
@@ -22,9 +21,8 @@ class PersistenceManagerStub:
         copied_template_path = template_path
         return database_result
 
-    func get_database_handle(schema_name: String, db_name: String = "") -> SQLite:
+    func get_database_handle(db_name: String) -> SQLite:
         handle_lookup_count += 1
-        looked_up_schema = schema_name
         looked_up_database_name = db_name
         return handle_result
 
@@ -69,7 +67,6 @@ func test_load_existing_game_normalizes_name() -> void:
     var result := _game_manager.load_existing_game(" slot_1.db ")
 
     assert_eq(result, _database)
-    assert_eq(_persistence_manager.looked_up_schema, "game")
     assert_eq(_persistence_manager.looked_up_database_name, "slot_1")
     assert_eq(_persistence_manager.handle_lookup_count, 1)
 

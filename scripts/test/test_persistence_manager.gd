@@ -1,59 +1,49 @@
 extends GutTest
 
 
-func test_initialize_database_loads_schema_from_named_directory() -> void:
+func test_create_database_from_template_requires_existing_template() -> void:
     var manager := PersistenceManager.new()
-    var database_name := "gut_schema_directory_test"
-    var database := manager.initialize_database("game", database_name)
+    var database_name := "gut_missing_template_test"
+    var missing_template_path := "res://data/database/missing_template_for_test.db"
+    assert_null(manager.create_database_from_template(database_name, missing_template_path))
+    assert_push_error("Template database does not exist at %s." % missing_template_path)
+    assert_false(FileAccess.file_exists(ProjectSettings.globalize_path("user://%s.db" % database_name)))
+
+
+func test_create_database_from_template_and_reopen_existing_save() -> void:
+    var manager := PersistenceManager.new()
+    var database_name := "gut_template_copy_test"
+    var database := manager.create_database_from_template(database_name)
 
     assert_not_null(database)
     if database == null:
         return
 
-    assert_true(database.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'example1';"))
-    assert_eq(database.query_result.size(), 1)
-    assert_true(manager.delete_database(database_name))
-
-
-func test_load_seed_loads_numbered_fragments_in_order() -> void:
-    var manager := PersistenceManager.new()
-    var database_name := "gut_seed_fragments_test"
-    var database := manager.initialize_database("game", database_name)
-
-    assert_not_null(database)
-    if database == null:
-        return
-
-    assert_eq(manager._build_seed_path("game_test"), "res://data/seed/game/test/")
-    assert_true(manager.load_seed(database, "game_test"))
-    assert_true(database.query("SELECT example2.id FROM example2 INNER JOIN example1 ON example1.id = example2.example1;"))
+    assert_true(database.query("SELECT name FROM example1 ORDER BY id;"))
     assert_eq(database.query_result.size(), 2)
+    assert_true(database.query("SELECT example1 FROM example2 ORDER BY id;"))
+    assert_eq(database.query_result.size(), 2)
+    var repository := DataRepository.new(database)
+    var summaries: Array[Example2SummaryData] = repository.get_all_example2_summary()
+    assert_eq(summaries.size(), 2)
+    var summary := repository.get_example2_summary_by_id(1)
+    assert_not_null(summary)
+    if summary != null:
+        assert_eq(summary.example1_name, "Alpha")
+    assert_true(database.query("PRAGMA foreign_key_list(example2);"))
+    assert_eq(database.query_result.size(), 1)
+    assert_true(database.query("PRAGMA foreign_keys;"))
+    assert_eq(database.query_result[0]["foreign_keys"], 1)
+    assert_eq(database.path, ProjectSettings.globalize_path("user://%s.db" % database_name))
+
+    assert_true(database.close_db())
+    manager._database_cache.erase(database_name)
+    var reopened_database := manager.get_database_handle(database_name)
+    assert_not_null(reopened_database)
+    if reopened_database != null:
+        assert_true(reopened_database.query("SELECT COUNT(*) AS row_count FROM example2;"))
+        assert_eq(reopened_database.query_result[0]["row_count"], 2)
     assert_true(manager.delete_database(database_name))
-
-
-func test_seed_fragment_paths_use_numeric_prefix_order() -> void:
-    var directory_path := "user://gut_seed_numeric_order_test"
-    var absolute_directory_path := ProjectSettings.globalize_path(directory_path)
-    assert_eq(DirAccess.make_dir_recursive_absolute(absolute_directory_path), OK)
-
-    for filename in ["10_last.json", "02_middle.json", "001_first.json"]:
-        var file := FileAccess.open(directory_path.path_join(filename), FileAccess.WRITE)
-        assert_not_null(file)
-        if file != null:
-            file.close()
-
-    var manager := PersistenceManager.new()
-    var paths := manager._get_ordered_seed_paths(directory_path)
-    var ordered_filenames: Array[String] = []
-    for path in paths:
-        ordered_filenames.append(path.get_file())
-    assert_eq(ordered_filenames, ["001_first.json", "02_middle.json", "10_last.json"])
-
-    var directory := DirAccess.open(directory_path)
-    if directory != null:
-        for filename in directory.get_files():
-            directory.remove(filename)
-    assert_eq(DirAccess.remove_absolute(absolute_directory_path), OK)
 
 
 func test_delete_database_closes_cached_handle_before_removing_file() -> void:
@@ -75,7 +65,7 @@ func test_data_repository_inserts_and_manages_generated_ids() -> void:
     var manager := PersistenceManager.new()
     var database_name := "gut_repository_crud_test"
     manager.delete_database(database_name)
-    var database := manager.initialize_database("game", database_name)
+    var database := manager.create_database_from_template(database_name)
 
     assert_not_null(database)
     if database == null:
