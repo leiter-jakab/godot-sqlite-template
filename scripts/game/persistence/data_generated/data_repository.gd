@@ -26,7 +26,24 @@ func _execute_write(query: String, bindings: Array) -> bool:
     return not rows.is_empty() and int(rows[0].get("affected_rows", 0)) > 0
 
 
-func get_example1_by_id(id: String) -> Example1Data:
+func _execute_insert(query: String, bindings: Array) -> int:
+    if _database == null:
+        push_error("Cannot query without a database handle.")
+        return 0
+    if not _database.query_with_bindings(query, bindings):
+        push_error("Failed to execute database insert: %s" % _database.error_message)
+        return 0
+    if not _database.query("SELECT last_insert_rowid() AS inserted_id;"):
+        push_error("Failed to retrieve inserted database ID: %s" % _database.error_message)
+        return 0
+    var rows: Array = _database.query_result
+    if rows.is_empty():
+        push_error("Failed to retrieve inserted database ID.")
+        return 0
+    return int(rows[0].get("inserted_id", 0))
+
+
+func get_example1_by_id(id: int) -> Example1Data:
     if _database == null:
         push_error("Cannot query without a database handle.")
         return null
@@ -54,12 +71,24 @@ func get_all_example1() -> Array[Example1Data]:
     return items
 
 
+func insert_example1(data: Example1Data) -> bool:
+    if data.id != 0:
+        push_error("Cannot insert example1 with an assigned ID; reset it to 0 first.")
+        return false
+    var query := "INSERT INTO example1 (name, date) VALUES (?, ?);"
+    var inserted_id := _execute_insert(query, [data.name, data.date])
+    if inserted_id <= 0:
+        return false
+    data.id = inserted_id
+    return true
+
+
 func update_example1(data: Example1Data) -> bool:
     var query := "UPDATE example1 SET name = ?, date = ? WHERE id = ?;"
     return _execute_write(query, [data.name, data.date, data.id])
 
 
-func delete_example1_by_id(id: String) -> bool:
+func delete_example1_by_id(id: int) -> bool:
     var query := "DELETE FROM example1 WHERE id = ?;"
     return _execute_write(query, [id])
 
@@ -90,6 +119,18 @@ func get_all_example2() -> Array[Example2Data]:
     for row in _database.query_result:
         items.append(Example2Data.from_row(row))
     return items
+
+
+func insert_example2(data: Example2Data) -> bool:
+    if data.id != 0:
+        push_error("Cannot insert example2 with an assigned ID; reset it to 0 first.")
+        return false
+    var query := "INSERT INTO example2 (example1, value) VALUES (?, ?);"
+    var inserted_id := _execute_insert(query, [data.example1, data.value])
+    if inserted_id <= 0:
+        return false
+    data.id = inserted_id
+    return true
 
 
 func update_example2(data: Example2Data) -> bool:

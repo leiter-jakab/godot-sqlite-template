@@ -2,7 +2,7 @@
   "tables": {
     "example1": {
       "id": {
-        "data_type": "text",
+        "data_type": "integer",
         "primary_key": true
       },
       "name": {
@@ -19,7 +19,7 @@
         "primary_key": true
       },
       "example1": {
-        "data_type": "text",
+        "data_type": "integer",
         "not_null": true,
         "foreign_key": {
           "table": "example1",

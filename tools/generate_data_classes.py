@@ -149,6 +149,9 @@ def validate_schema(schema: Any) -> Dict[str, Dict[str, Dict[str, Any]]]:
                 )
         if len(primary_keys) != 1:
             raise ValueError(f"Table '{table_name}' must define exactly one primary key for repository lookups.")
+        primary_key_type = fields[primary_keys[0]]["data_type"].lower()
+        if primary_key_type != "integer":
+            raise ValueError(f"Primary key for table '{table_name}' must use the integer data_type.")
 
     return tables
 
@@ -249,12 +252,30 @@ def render_repository(
         "        return false",
         "    var rows: Array = _database.query_result",
         '    return not rows.is_empty() and int(rows[0].get("affected_rows", 0)) > 0',
+        "",
+        "",
+        "func _execute_insert(query: String, bindings: Array) -> int:",
+        '    if _database == null:',
+        '        push_error("Cannot query without a database handle.")',
+        "        return 0",
+        "    if not _database.query_with_bindings(query, bindings):",
+        '        push_error("Failed to execute database insert: %s" % _database.error_message)',
+        "        return 0",
+        '    if not _database.query("SELECT last_insert_rowid() AS inserted_id;"):',
+        '        push_error("Failed to retrieve inserted database ID: %s" % _database.error_message)',
+        "        return 0",
+        "    var rows: Array = _database.query_result",
+        "    if rows.is_empty():",
+        '        push_error("Failed to retrieve inserted database ID.")',
+        "        return 0",
+        '    return int(rows[0].get("inserted_id", 0))',
     ]
 
     for table_name, fields in tables.items():
         class_name = to_class_name(table_name)
         primary_key = next(name for name, field in fields.items() if field.get("primary_key", False))
         primary_key_type = FIELD_TYPES[fields[primary_key]["data_type"].lower()][0]
+        insert_fields = [field_name for field_name in fields if field_name != primary_key]
         update_fields = [field_name for field_name in fields if field_name != primary_key]
         lines.extend(
             [
@@ -286,6 +307,37 @@ def render_repository(
                 "    for row in _database.query_result:",
                 f"        items.append({class_name}.from_row(row))",
                 "    return items",
+                "",
+                "",
+                f"func insert_{table_name}(data: {class_name}) -> bool:",
+                f"    if data.{primary_key} != 0:",
+                f'        push_error("Cannot insert {table_name} with an assigned ID; reset it to 0 first.")',
+                "        return false",
+            ]
+        )
+        if insert_fields:
+            insert_columns = ", ".join(insert_fields)
+            insert_placeholders = ", ".join("?" for _ in insert_fields)
+            insert_bindings = ", ".join(f"data.{field_name}" for field_name in insert_fields)
+            lines.extend(
+                [
+                    f'    var query := "INSERT INTO {table_name} ({insert_columns}) VALUES ({insert_placeholders});"',
+                    f"    var inserted_id := _execute_insert(query, [{insert_bindings}])",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f'    var query := "INSERT INTO {table_name} DEFAULT VALUES;"',
+                    "    var inserted_id := _execute_insert(query, [])",
+                ]
+            )
+        lines.extend(
+            [
+                "    if inserted_id <= 0:",
+                "        return false",
+                f"    data.{primary_key} = inserted_id",
+                "    return true",
                 "",
                 "",
                 f"func update_{table_name}(data: {class_name}) -> bool:",

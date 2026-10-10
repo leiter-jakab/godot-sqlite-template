@@ -17,13 +17,13 @@ BUILD_SCRIPT = REPO_ROOT / "tools" / "build_seed_database.py"
 SCHEMA = {
     "tables": {
         "parent": {
-            "id": {"data_type": "text", "primary_key": True},
+            "id": {"data_type": "integer", "primary_key": True},
             "name": {"data_type": "text", "not_null": True},
         },
         "child": {
             "id": {"data_type": "integer", "primary_key": True},
             "parent_id": {
-                "data_type": "text",
+                "data_type": "integer",
                 "not_null": True,
                 "foreign_key": {"table": "parent", "field": "id"},
             },
@@ -31,8 +31,8 @@ SCHEMA = {
     }
 }
 SEED_DATA = {
-    "parent": [{"id": "parent_1", "name": "Parent"}],
-    "child": [{"id": 1, "parent_id": "parent_1"}],
+    "parent": [{"id": 10, "name": "Parent"}],
+    "child": [{"id": 1, "parent_id": 10}],
 }
 
 
@@ -51,7 +51,7 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         connection = sqlite3.connect(self.output_path)
         try:
             self.assertEqual(connection.execute("SELECT name FROM parent").fetchall(), [("Parent",)])
-            self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [("parent_1",)])
+            self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [(10,)])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
             self.assertEqual(connection.execute("PRAGMA integrity_check").fetchone(), ("ok",))
         finally:
@@ -66,7 +66,7 @@ class BuildSeedDatabaseTests(unittest.TestCase):
 
         connection = sqlite3.connect(self.output_path)
         try:
-            self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [("parent_1",)])
+            self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [(10,)])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
         finally:
             connection.close()
@@ -128,7 +128,7 @@ class BuildSeedDatabaseTests(unittest.TestCase):
     def test_invalid_foreign_key_does_not_replace_existing_output(self) -> None:
         self.output_path.parent.mkdir(parents=True)
         self.output_path.write_bytes(b"existing database artifact")
-        invalid_seed = {"parent": [], "child": [{"id": 1, "parent_id": "missing"}]}
+        invalid_seed = {"parent": [], "child": [{"id": 1, "parent_id": 999}]}
 
         with self.assertRaisesRegex(ValueError, "foreign-key violations"):
             build_database(self.tables, invalid_seed, self.output_path)
@@ -136,7 +136,7 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         self.assertEqual(self.output_path.read_bytes(), b"existing database artifact")
 
     def test_rejects_values_that_do_not_match_declared_types(self) -> None:
-        invalid_seed = {"parent": [{"id": 1, "name": "Parent"}], "child": []}
+        invalid_seed = {"parent": [{"id": 1, "name": 42}], "child": []}
 
         with self.assertRaisesRegex(ValueError, "expected text"):
             build_database(self.tables, invalid_seed, self.output_path)
