@@ -217,14 +217,6 @@ def generated_classes(
     }
 
 
-def pluralize_table_name(table_name: str) -> str:
-    if table_name.endswith("y") and len(table_name) > 1 and table_name[-2] not in "aeiou":
-        return table_name[:-1] + "ies"
-    if table_name.endswith(("s", "x", "z", "ch", "sh")):
-        return table_name + "es"
-    return table_name + "s"
-
-
 def render_repository(
     tables: Dict[str, Dict[str, Dict[str, Any]]],
     indent_unit: str = "    ",
@@ -243,12 +235,27 @@ def render_repository(
         '        push_error("Database handle cannot be null.")',
         "        return",
         "    _database = database",
+        "",
+        "",
+        "func _execute_write(query: String, bindings: Array) -> bool:",
+        '    if _database == null:',
+        '        push_error("Cannot query without a database handle.")',
+        "        return false",
+        "    if not _database.query_with_bindings(query, bindings):",
+        '        push_error("Failed to execute database write: %s" % _database.error_message)',
+        "        return false",
+        '    if not _database.query("SELECT changes() AS affected_rows;"):',
+        '        push_error("Failed to check affected database rows: %s" % _database.error_message)',
+        "        return false",
+        "    var rows: Array = _database.query_result",
+        '    return not rows.is_empty() and int(rows[0].get("affected_rows", 0)) > 0',
     ]
 
     for table_name, fields in tables.items():
         class_name = to_class_name(table_name)
         primary_key = next(name for name, field in fields.items() if field.get("primary_key", False))
         primary_key_type = FIELD_TYPES[fields[primary_key]["data_type"].lower()][0]
+        update_fields = [field_name for field_name in fields if field_name != primary_key]
         lines.extend(
             [
                 "",
@@ -267,7 +274,7 @@ def render_repository(
                 f"    return {class_name}.from_row(rows[0])",
                 "",
                 "",
-                f"func get_all_{pluralize_table_name(table_name)}() -> Array[{class_name}]:",
+                f"func get_all_{table_name}() -> Array[{class_name}]:",
                 f"    var items: Array[{class_name}] = []",
                 "    if _database == null:",
                 '        push_error("Cannot query without a database handle.")',
@@ -279,6 +286,29 @@ def render_repository(
                 "    for row in _database.query_result:",
                 f"        items.append({class_name}.from_row(row))",
                 "    return items",
+                "",
+                "",
+                f"func update_{table_name}(data: {class_name}) -> bool:",
+            ]
+        )
+        if update_fields:
+            assignments = ", ".join(f"{field_name} = ?" for field_name in update_fields)
+            bindings = ", ".join(f"data.{field_name}" for field_name in update_fields)
+            lines.extend(
+                [
+                    f'    var query := "UPDATE {table_name} SET {assignments} WHERE {primary_key} = ?;"',
+                    f"    return _execute_write(query, [{bindings}, data.{primary_key}])",
+                ]
+            )
+        else:
+            lines.append("    return false")
+        lines.extend(
+            [
+                "",
+                "",
+                f"func delete_{table_name}_by_id(id: {primary_key_type}) -> bool:",
+                f'    var query := "DELETE FROM {table_name} WHERE {primary_key} = ?;"',
+                "    return _execute_write(query, [id])",
             ]
         )
 
