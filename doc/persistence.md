@@ -23,18 +23,30 @@ This design keeps data access predictable and avoids hand-writing repetitive dat
 ```text
 .
 ├── data/
-│   ├── schema/game.json            # Source-of-truth schema contract
-│   ├── seed/                      # Seed JSON used to build the template database
-│   └── database/                  # Generated SQLite template included in game exports
-├── src/
-│   ├── game_manager.gd            # Save-game helper API
-│   ├── persistence/
-│   │   ├── persistence_manager.gd  # Database creation, schema application, seed loading
-│   │   └── data_generated/        # Generated classes and repository
-│   └── states/                    # State-driven gameplay flow
+│   ├── schema/
+│   │   └── game/
+│   │       ├── schema.json        # Source-of-truth schema contract
+│   │       └── fragments/         # Optional schema fragments merged before generation
+│   ├── seed/
+│   │   └── game/
+│   │       ├── prod/              # Production seed fragments
+│   │       └── test/              # Test seed fragments used by the template builder
+│   └── database/
+│       └── game_template.db      # Packaged SQLite template used to create saves
+├── scripts/
+│   ├── game/
+│   │   ├── game_manager.gd        # Save-game helper API
+│   │   ├── main.gd                # Application state bootstrap
+│   │   ├── persistence/
+│   │   │   ├── persistence_manager.gd  # Database creation, schema application, seed loading
+│   │   │   └── data_generated/    # Generated classes and repository
+│   │   └── states/                # State-driven gameplay flow
+│   └── test/                      # GUT tests for game scripts
 ├── tools/
-│   ├── test/                     # Python tests for the tool scripts
-│   └── generate_data_classes.py   # Schema validator and code generator
+│   ├── build_seed_database.py      # Builds the packaged SQLite template
+│   ├── generate_data_classes.py    # Schema validator and code generator
+│   ├── merge_schema_fragments.py   # Optional schema fragment merger
+│   └── test/                      # Python tests for the tool scripts
 └── project.godot
 ```
 
@@ -124,6 +136,8 @@ python tools/build_seed_database.py
 ```
 
 By default, the builder loads numbered seed fragments from `data/seed/game/test/`. Use `--seed-dir` to select another fragment directory, or `--seed-file` to use one JSON file instead; `--seed-file` takes precedence if both are supplied. Use `--schema` or `--output` to override the schema or output path. New saves copy the packaged template to `user://<save-name>.db`; existing saves open that copy without recreating tables or inserting seed data. Keep foreign-key enforcement enabled on each runtime database connection.
+
+The current repository schema lives in `data/schema/game/schema.json` and uses the example tables `example1`, `example2`, and the `example2_summary` view to demonstrate the generator workflow and repository API.
 
 The `.db` is a non-resource file. Add `data/database/*.db` to the **Filters to export non-resource files** setting in each Godot export preset, then verify the template is present in the exported game. This repository does not define platform-specific export presets.
 

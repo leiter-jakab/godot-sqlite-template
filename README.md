@@ -16,29 +16,32 @@ Keep the upstream license and notice files when updating either addon.
 ```text
 .
 ├── addons/
-│   ├── godot-sqlite/         # SQLite Godot extension and runtime support
-│   └── gut/                  # GUT test framework
+│   ├── godot-sqlite/          # SQLite Godot extension and runtime support
+│   └── gut/                   # GUT test framework
 ├── data/
-│   ├── schema/                # Canonical database schema files
-│   ├── seed/                  # Default or test JSON seed data
-│   └── database/              # Generated SQLite template copied into new saves
+│   ├── database/              # Packaged SQLite template used to create saves
+│   ├── schema/
+│   │   └── game/              # Canonical schema contract and optional fragments
+│   └── seed/
+│       └── game/              # Seed JSON fragments for default/test data
 ├── doc/                       # Project documentation
-├── scenes/                     # Godot scenes and UI layouts
+├── scenes/                    # Godot scenes and UI layouts
 ├── scripts/
 │   ├── game/
 │   │   ├── main.gd            # App bootstrap and state orchestration
-│   │   ├── game_manager.gd    # Save-game helpers and database entry points
+│   │   ├── game_manager.gd   # Save-game helpers and database entry points
 │   │   ├── actors/            # Actor logic
 │   │   ├── items/             # Item logic
 │   │   ├── levels/            # Level/gameplay logic
 │   │   ├── persistence/       # SQLite manager and generated persistence layer
 │   │   ├── states/            # Gameplay lifecycle state machine
 │   │   └── ui/                # UI scripts and screens
-│   └── test/                  # GUT tests for game scripts
+│   └── test/                 # GUT tests for game scripts
 ├── tools/
-│   ├── test/                      # Python tests for the tool scripts
+│   ├── build_seed_database.py # Builds the packaged SQLite template
 │   ├── generate_data_classes.py # Schema-to-GDScript generator
-│   └── merge_schema_fragments.py # Optional schema fragment merger
+│   ├── merge_schema_fragments.py # Optional schema fragment merger
+│   └── test/                 # Python tests for the tool scripts
 ├── project.godot              # Godot project configuration
 ├── README.md
 ├── .github/
@@ -48,11 +51,11 @@ Keep the upstream license and notice files when updating either addon.
 
 ## How the project is organized
 
-- `data/schema/` is the source of truth for the database design.
-- `tools/build_seed_database.py` builds a populated SQLite template from the schema and seed JSON.
+- `data/schema/game/` is the source of truth for the database design; it can include optional fragment files before the generated `schema.json` is merged.
+- `tools/build_seed_database.py` builds the packaged SQLite template from the schema and seed JSON.
 - `tools/generate_data_classes.py` converts that schema into typed persistence classes and repository helpers.
-- `scripts/test/` contains GUT tests for game code, while `tools/test/` contains Python tests for the tooling.
-- `scripts/game/persistence/` contains the runtime SQLite manager and generated data access layer.
+- `scripts/test/` contains GUT tests for the runtime flow, while `tools/test/` contains Python tests for the schema and database tooling.
+- `scripts/game/persistence/` contains the runtime SQLite manager and generated data-access layer.
 - `scripts/game/states/` contains the game flow states such as menu, gameplay, and paused gameplay.
 - `scenes/` contains the Godot scene files that define UI and gameplay layout.
 - `scripts/game/main.gd` wires the application together and swaps states via the main state machine.
