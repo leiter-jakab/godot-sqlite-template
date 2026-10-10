@@ -71,7 +71,7 @@ func test_delete_database_closes_cached_handle_before_removing_file() -> void:
     assert_false(manager._database_cache.has(database_name))
 
 
-func test_data_repository_updates_and_deletes_rows_by_id() -> void:
+func test_data_repository_inserts_and_manages_generated_ids() -> void:
     var manager := PersistenceManager.new()
     var database_name := "gut_repository_crud_test"
     manager.delete_database(database_name)
@@ -81,33 +81,65 @@ func test_data_repository_updates_and_deletes_rows_by_id() -> void:
     if database == null:
         return
 
-    assert_true(database.insert_row("example1", {"id": "crud_parent", "name": "Before", "date": 123}))
-    assert_true(database.insert_row("example2", {"id": 73, "example1": "crud_parent", "value": 4.5}))
-
     var repository := DataRepository.new(database)
-    var parent := repository.get_example1_by_id("crud_parent")
-    assert_not_null(parent)
-    if parent != null:
-        parent.name = "After"
-        parent.date = null
-        assert_true(repository.update_example1(parent))
-        var updated_parent := repository.get_example1_by_id("crud_parent")
-        assert_eq(updated_parent.name, "After")
-        assert_null(updated_parent.date)
+    var parent := Example1Data.new()
+    parent.name = "Before"
+    parent.date = 123
+    assert_true(repository.insert_example1(parent))
+    assert_true(parent.id > 0)
 
-    var child := repository.get_example2_by_id(73)
-    assert_not_null(child)
-    if child != null:
-        child.value = null
-        assert_true(repository.update_example2(child))
-        var updated_child := repository.get_example2_by_id(73)
-        assert_null(updated_child.value)
-        assert_true(repository.delete_example2_by_id(73))
-        assert_false(repository.delete_example2_by_id(73))
+    var inserted_parent := repository.get_example1_by_id(parent.id)
+    assert_not_null(inserted_parent)
+    if inserted_parent == null:
+        return
+    assert_eq(inserted_parent.name, "Before")
+    assert_eq(inserted_parent.date, 123)
 
-    assert_true(repository.delete_example1_by_id("crud_parent"))
-    assert_false(repository.delete_example1_by_id("crud_parent"))
+    parent.name = "Must not replace existing row"
+    assert_false(repository.insert_example1(parent))
+    assert_push_error("Cannot insert example1 with an assigned ID")
+    var unchanged_parent := repository.get_example1_by_id(parent.id)
+    assert_eq(unchanged_parent.name, "Before")
+
+    parent.name = "After"
+    parent.date = null
+    assert_true(repository.update_example1(parent))
+    var updated_parent := repository.get_example1_by_id(parent.id)
+    assert_eq(updated_parent.name, "After")
+    assert_null(updated_parent.date)
+
+    var parent_copy := Example1Data.new()
+    parent_copy.name = parent.name
+    parent_copy.date = parent.date
+    assert_true(repository.insert_example1(parent_copy))
+    assert_true(parent_copy.id > 0)
+    assert_true(parent_copy.id != parent.id)
+
+    var child := Example2Data.new()
+    child.example1 = parent.id
+    child.value = 4.5
+    assert_true(repository.insert_example2(child))
+    assert_true(child.id > 0)
+
+    var inserted_child := repository.get_example2_by_id(child.id)
+    assert_not_null(inserted_child)
+    if inserted_child == null:
+        return
+    assert_eq(inserted_child.example1, parent.id)
+    assert_eq(inserted_child.value, 4.5)
+
+    inserted_child.value = null
+    assert_true(repository.update_example2(inserted_child))
+    var updated_child := repository.get_example2_by_id(child.id)
+    assert_null(updated_child.value)
+    assert_true(repository.delete_example2_by_id(child.id))
+    assert_false(repository.delete_example2_by_id(child.id))
+
+    assert_true(repository.delete_example1_by_id(parent_copy.id))
+    assert_true(repository.delete_example1_by_id(parent.id))
+    assert_false(repository.delete_example1_by_id(parent.id))
+
     var missing_parent := Example1Data.new()
-    missing_parent.id = "missing_parent"
+    missing_parent.id = 999
     assert_false(repository.update_example1(missing_parent))
     assert_true(manager.delete_database(database_name))

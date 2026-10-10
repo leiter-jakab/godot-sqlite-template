@@ -7,6 +7,7 @@ from tools.generate_data_classes import (
     _ordered_seed_fragments,
     render_repository,
     validate_seed_files,
+    validate_schema,
 )
 
 
@@ -59,8 +60,8 @@ class GenerateDataClassesSeedTests(unittest.TestCase):
         seed_directory = self.seed_directory / "game" / "test"
         seed_directory.mkdir(parents=True)
         seed_path = seed_directory / "01_examples.json"
-        seed_path.write_text(json.dumps({"example1": [{"id": "example"}]}), encoding="utf-8")
-        tables = {"example1": {"id": {"data_type": "text"}}}
+        seed_path.write_text(json.dumps({"example1": [{"id": 1}]}), encoding="utf-8")
+        tables = {"example1": {"id": {"data_type": "integer"}}}
 
         validate_seed_files(tables, self.seed_directory)
 
@@ -74,22 +75,39 @@ class GenerateDataClassesRepositoryTests(unittest.TestCase):
         self.assertIn("func get_all_category() -> Array[CategoryData]:", repository)
         self.assertNotIn("func get_all_categories()", repository)
 
-    def test_renders_update_and_delete_for_text_and_integer_primary_keys(self) -> None:
+    def test_renders_insert_update_and_delete_for_integer_primary_keys(self) -> None:
         tables = {
             "example1": {
-                "id": {"data_type": "text", "primary_key": True},
+                "id": {"data_type": "integer", "primary_key": True},
                 "name": {"data_type": "text", "not_null": True},
                 "date": {"data_type": "integer"},
             },
             "example2": {
                 "id": {"data_type": "integer", "primary_key": True},
-                "example1": {"data_type": "text", "not_null": True},
+                "example1": {"data_type": "integer", "not_null": True},
                 "value": {"data_type": "real"},
             },
         }
 
         repository = render_repository(tables)
 
+        self.assertIn("func insert_example1(data: Example1Data) -> bool:", repository)
+        self.assertIn(
+            'var query := "INSERT INTO example1 (name, date) VALUES (?, ?);"',
+            repository,
+        )
+        self.assertIn(
+            "var inserted_id := _execute_insert(query, [data.name, data.date])",
+            repository,
+        )
+        self.assertIn("data.id = inserted_id", repository)
+        self.assertIn("if data.id != 0:", repository)
+        self.assertIn("func insert_example2(data: Example2Data) -> bool:", repository)
+        self.assertIn(
+            'var query := "INSERT INTO example2 (example1, value) VALUES (?, ?);"',
+            repository,
+        )
+        self.assertIn("SELECT last_insert_rowid() AS inserted_id;", repository)
         self.assertIn("func update_example1(data: Example1Data) -> bool:", repository)
         self.assertIn(
             'var query := "UPDATE example1 SET name = ?, date = ? WHERE id = ?;"',
@@ -99,7 +117,7 @@ class GenerateDataClassesRepositoryTests(unittest.TestCase):
             "return _execute_write(query, [data.name, data.date, data.id])",
             repository,
         )
-        self.assertIn("func delete_example1_by_id(id: String) -> bool:", repository)
+        self.assertIn("func delete_example1_by_id(id: int) -> bool:", repository)
         self.assertIn(
             'var query := "DELETE FROM example1 WHERE id = ?;"',
             repository,
@@ -116,9 +134,21 @@ class GenerateDataClassesRepositoryTests(unittest.TestCase):
         self.assertIn("func delete_example2_by_id(id: int) -> bool:", repository)
         self.assertNotIn("SET id = ?", repository)
 
+    def test_rejects_non_integer_primary_keys(self) -> None:
+        schema = {
+            "tables": {
+                "example": {
+                    "id": {"data_type": "text", "primary_key": True},
+                },
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "must use the integer data_type"):
+            validate_schema(schema)
+
     def test_write_helper_returns_false_when_no_rows_were_affected(self) -> None:
         repository = render_repository(
-            {"example": {"id": {"data_type": "text", "primary_key": True}}}
+            {"example": {"id": {"data_type": "integer", "primary_key": True}}}
         )
 
         self.assertIn(

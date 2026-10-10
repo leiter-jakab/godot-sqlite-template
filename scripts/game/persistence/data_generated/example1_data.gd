@@ -2,7 +2,7 @@ extends RefCounted
 
 class_name Example1Data
 
-var id: String = ""
+var id: int = 0
 var name: String = ""
 var date: Variant = null
 
@@ -13,7 +13,7 @@ static func table_name() -> String:
 
 static func from_row(row: Dictionary) -> Example1Data:
     var data := Example1Data.new()
-    data.id = str(row.get("id", ""))
+    data.id = int(row.get("id", 0))
     data.name = str(row.get("name", ""))
     data.date = row.get("date", null)
     return data

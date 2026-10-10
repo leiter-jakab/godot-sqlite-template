@@ -6,7 +6,7 @@
         "primary_key": true
       },
       "example1": {
-        "data_type": "text",
+        "data_type": "integer",
         "not_null": true,
         "foreign_key": {
           "table": "example1",
