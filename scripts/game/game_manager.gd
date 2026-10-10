@@ -2,8 +2,6 @@ extends RefCounted
 
 class_name GameManager
 
-const GAME_SCHEMA_NAME := "game"
-
 var _persistence_manager: PersistenceManager
 
 
@@ -22,7 +20,7 @@ func load_existing_game(game_name: String) -> SQLite:
         push_error("Game name cannot be empty.")
         return null
 
-    return _persistence_manager.get_database_handle(GAME_SCHEMA_NAME, db_name)
+    return _persistence_manager.get_database_handle(db_name)
 
 
 func delete_game(game_name: String) -> bool:

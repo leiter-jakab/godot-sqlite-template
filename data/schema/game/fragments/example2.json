@@ -17,5 +17,26 @@
         "data_type": "real"
       }
     }
+  },
+  "views": {
+    "example2_summary": {
+      "query": "SELECT example2.id, example1.name AS example1_name, example2.value FROM example2 JOIN example1 ON example1.id = example2.example1",
+      "columns": {
+        "id": {
+          "data_type": "integer",
+          "not_null": true
+        },
+        "example1_name": {
+          "data_type": "text",
+          "not_null": true
+        },
+        "value": {
+          "data_type": "real"
+        }
+      },
+      "lookups": {
+        "id": ["id"]
+      }
+    }
   }
 }

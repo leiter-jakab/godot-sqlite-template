@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from tools.build_seed_database import build_database
-from tools.generate_data_classes import validate_schema
+from tools.generate_data_classes import validate_schema, validate_views
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -68,6 +68,34 @@ class BuildSeedDatabaseTests(unittest.TestCase):
         try:
             self.assertEqual(connection.execute("SELECT parent_id FROM child").fetchall(), [(10,)])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+        finally:
+            connection.close()
+
+    def test_builds_views_after_seed_data(self) -> None:
+        schema = {
+            **SCHEMA,
+            "views": {
+                "child_summary": {
+                    "query": "SELECT child.id, parent.name FROM child JOIN parent ON parent.id = child.parent_id",
+                    "columns": {
+                        "id": {"data_type": "integer", "not_null": True},
+                        "name": {"data_type": "text", "not_null": True},
+                    },
+                    "lookups": {"id": ["id"]},
+                },
+            },
+        }
+        tables = validate_schema(schema)
+        views = validate_views(schema, tables)
+
+        build_database(tables, SEED_DATA, self.output_path, views)
+
+        connection = sqlite3.connect(self.output_path)
+        try:
+            self.assertEqual(
+                connection.execute("SELECT id, name FROM child_summary").fetchall(),
+                [(1, "Parent")],
+            )
         finally:
             connection.close()
 

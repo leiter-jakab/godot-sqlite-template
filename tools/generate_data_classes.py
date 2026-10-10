@@ -19,6 +19,7 @@ EDITORCONFIG_PATH = REPO_ROOT / ".editorconfig"
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TABLE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 RESERVED_MEMBERS = {"table_name", "from_row", "to_row", "get_by_id", "get_all"}
+VIEW_RESERVED_MEMBERS = RESERVED_MEMBERS | {"view_name"}
 FIELD_TYPES = {
     "text": ("String", '""', "str"),
     "integer": ("int", "0", "int"),
@@ -153,7 +154,89 @@ def validate_schema(schema: Any) -> Dict[str, Dict[str, Dict[str, Any]]]:
         if primary_key_type != "integer":
             raise ValueError(f"Primary key for table '{table_name}' must use the integer data_type.")
 
+    validate_views(schema, tables, class_names)
     return tables
+
+
+def validate_views(
+    schema: Any,
+    tables: Dict[str, Dict[str, Dict[str, Any]]],
+    class_names: set[str] | None = None,
+) -> Dict[str, Dict[str, Any]]:
+    views = schema.get("views", {})
+    if not isinstance(views, dict):
+        raise ValueError("Schema 'views' must be an object.")
+
+    used_class_names = class_names if class_names is not None else {
+        to_class_name(table_name) for table_name in tables
+    }
+    for view_name, view in views.items():
+        if not isinstance(view_name, str) or not TABLE_PATTERN.fullmatch(view_name):
+            raise ValueError(f"Invalid view name: {view_name!r}")
+        if view_name in tables:
+            raise ValueError(f"View '{view_name}' conflicts with a table of the same name.")
+        if not isinstance(view, dict):
+            raise ValueError(f"View '{view_name}' must be an object.")
+
+        class_name = to_class_name(view_name)
+        if class_name in used_class_names:
+            raise ValueError(f"Multiple schema objects generate the class name '{class_name}'.")
+        used_class_names.add(class_name)
+
+        query = view.get("query")
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError(f"View '{view_name}' must define a non-empty 'query'.")
+        normalized_query = query.strip().removesuffix(";").strip()
+        if not re.match(r"^(SELECT|WITH)\b", normalized_query, re.IGNORECASE) or ";" in normalized_query:
+            raise ValueError(f"View '{view_name}' query must be a single SELECT or WITH query.")
+        view["query"] = normalized_query
+
+        columns = view.get("columns")
+        if not isinstance(columns, dict) or not columns:
+            raise ValueError(f"View '{view_name}' must contain a non-empty 'columns' object.")
+        for column_name, column in columns.items():
+            if not isinstance(column_name, str) or not IDENTIFIER_PATTERN.fullmatch(column_name):
+                raise ValueError(f"Invalid column name in view '{view_name}': {column_name!r}")
+            if column_name in VIEW_RESERVED_MEMBERS:
+                raise ValueError(f"Column '{column_name}' in view '{view_name}' conflicts with the Data API.")
+            if not isinstance(column, dict):
+                raise ValueError(f"Column '{view_name}.{column_name}' must be an object.")
+            data_type = column.get("data_type")
+            if not isinstance(data_type, str) or data_type.lower() not in FIELD_TYPES:
+                supported_types = ", ".join(sorted(FIELD_TYPES))
+                raise ValueError(
+                    f"Unsupported data_type for '{view_name}.{column_name}': {data_type!r}. "
+                    f"Supported types: {supported_types}."
+                )
+
+        lookups = view.get("lookups", {})
+        if not isinstance(lookups, dict):
+            raise ValueError(f"View '{view_name}' 'lookups' must be an object.")
+        generated_methods: set[str] = set()
+        for lookup_name, lookup_columns in lookups.items():
+            if not isinstance(lookup_name, str) or not TABLE_PATTERN.fullmatch(lookup_name):
+                raise ValueError(f"Invalid lookup name in view '{view_name}': {lookup_name!r}")
+            if not isinstance(lookup_columns, list) or not lookup_columns:
+                raise ValueError(f"Lookup '{view_name}.{lookup_name}' must contain a non-empty column array.")
+            if any(not isinstance(column_name, str) for column_name in lookup_columns):
+                raise ValueError(f"Lookup '{view_name}.{lookup_name}' column names must be strings.")
+            if len(set(lookup_columns)) != len(lookup_columns):
+                raise ValueError(f"Lookup '{view_name}.{lookup_name}' contains duplicate columns.")
+            for column_name in lookup_columns:
+                if column_name not in columns:
+                    raise ValueError(
+                        f"Lookup '{view_name}.{lookup_name}' references unknown column '{column_name}'."
+                    )
+                if not columns[column_name].get("not_null", False):
+                    raise ValueError(
+                        f"Lookup column '{view_name}.{column_name}' must be declared not_null."
+                    )
+            method_name = f"get_{view_name}_by_{lookup_name}"
+            if method_name in generated_methods:
+                raise ValueError(f"View '{view_name}' generates duplicate repository method '{method_name}'.")
+            generated_methods.add(method_name)
+
+    return views
 
 
 def to_class_name(table_name: str) -> str:
@@ -166,6 +249,7 @@ def render_data_class(
     fields: Dict[str, Dict[str, Any]],
     indent_unit: str = "    ",
     line_ending: str = "\n",
+    source_method: str = "table_name",
 ) -> str:
     class_name = to_class_name(table_name)
     lines = ["extends RefCounted", "", f"class_name {class_name}", ""]
@@ -181,7 +265,7 @@ def render_data_class(
         [
             "",
             "",
-            "static func table_name() -> String:",
+            f"static func {source_method}() -> String:",
             f'    return "{table_name}"',
             "",
             "",
@@ -211,19 +295,26 @@ def generated_classes(
     output_dir: Path,
     indent_unit: str = "    ",
     line_ending: str = "\n",
+    views: Dict[str, Dict[str, Any]] | None = None,
 ) -> Dict[Path, str]:
-    return {
+    generated = {
         output_dir / f"{table_name}_data.gd": render_data_class(
             table_name, fields, indent_unit, line_ending
         )
         for table_name, fields in tables.items()
     }
+    for view_name, view in (views or {}).items():
+        generated[output_dir / f"{view_name}_data.gd"] = render_data_class(
+            view_name, view["columns"], indent_unit, line_ending, "view_name"
+        )
+    return generated
 
 
 def render_repository(
     tables: Dict[str, Dict[str, Dict[str, Any]]],
     indent_unit: str = "    ",
     line_ending: str = "\n",
+    views: Dict[str, Dict[str, Any]] | None = None,
 ) -> str:
     lines = [
         "extends RefCounted",
@@ -315,6 +406,7 @@ def render_repository(
                 "        return false",
             ]
         )
+
         if insert_fields:
             insert_columns = ", ".join(insert_fields)
             insert_placeholders = ", ".join("?" for _ in insert_fields)
@@ -363,6 +455,53 @@ def render_repository(
                 "    return _execute_write(query, [id])",
             ]
         )
+
+    for view_name, view in (views or {}).items():
+        class_name = to_class_name(view_name)
+        lines.extend(
+            [
+                "",
+                "",
+                f"func get_all_{view_name}() -> Array[{class_name}]:",
+                f"    var items: Array[{class_name}] = []",
+                "    if _database == null:",
+                '        push_error("Cannot query without a database handle.")',
+                "        return items",
+                f'    var query := "SELECT * FROM {view_name};"',
+                "    if not _database.query(query):",
+                f'        push_error("Failed to retrieve {view_name} rows: %s" % _database.error_message)',
+                "        return items",
+                "    for row in _database.query_result:",
+                f"        items.append({class_name}.from_row(row))",
+                "    return items",
+            ]
+        )
+        for lookup_name, lookup_columns in view.get("lookups", {}).items():
+            parameters = [
+                f"{column_name}: {FIELD_TYPES[view['columns'][column_name]['data_type'].lower()][0]}"
+                for column_name in lookup_columns
+            ]
+            where_clause = " AND ".join(f"{column_name} = ?" for column_name in lookup_columns)
+            bindings = ", ".join(lookup_columns)
+            method_name = f"get_{view_name}_by_{lookup_name}"
+            lines.extend(
+                [
+                    "",
+                    "",
+                    f"func {method_name}({', '.join(parameters)}) -> {class_name}:",
+                    "    if _database == null:",
+                    '        push_error("Cannot query without a database handle.")',
+                    "        return null",
+                    f'    var query := "SELECT * FROM {view_name} WHERE {where_clause};"',
+                    f"    if not _database.query_with_bindings(query, [{bindings}]):",
+                    f'        push_error("Failed to retrieve {view_name} row: %s" % _database.error_message)',
+                    "        return null",
+                    "    var rows: Array = _database.query_result",
+                    "    if rows.is_empty():",
+                    "        return null",
+                    f"    return {class_name}.from_row(rows[0])",
+                ]
+            )
 
     lines.append("")
     return format_generated_gdscript(lines, indent_unit, line_ending)
@@ -464,6 +603,7 @@ def main() -> int:
     try:
         schema = load_json_file(args.schema)
         tables = validate_schema(schema)
+        views = validate_views(schema, tables)
         if args.seed_file:
             _seed_fragment_number(args.seed_file)
             validate_seed_against_schema(tables, load_json_file(args.seed_file), args.seed_file)
@@ -475,9 +615,9 @@ def main() -> int:
 
         settings = load_editorconfig_settings(args.output_dir / "data_repository.gd")
         encoding, line_ending, indent_unit = output_format(settings)
-        expected = generated_classes(tables, args.output_dir, indent_unit, line_ending)
+        expected = generated_classes(tables, args.output_dir, indent_unit, line_ending, views)
         expected[args.output_dir / "data_repository.gd"] = render_repository(
-            tables, indent_unit, line_ending
+            tables, indent_unit, line_ending, views
         )
         if args.check:
             if not check_generated_files(expected, args.output_dir, encoding):

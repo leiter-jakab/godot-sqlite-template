@@ -5,9 +5,11 @@ from pathlib import Path
 
 from tools.generate_data_classes import (
     _ordered_seed_fragments,
+    generated_classes,
     render_repository,
     validate_seed_files,
     validate_schema,
+    validate_views,
 )
 
 
@@ -163,6 +165,56 @@ class GenerateDataClassesRepositoryTests(unittest.TestCase):
             "func update_example(data: ExampleData) -> bool:\n    return false",
             repository,
         )
+
+    def test_generates_typed_read_only_view_methods(self) -> None:
+        schema = {
+            "tables": {
+                "entry": {"id": {"data_type": "integer", "primary_key": True}},
+            },
+            "views": {
+                "entry_summary": {
+                    "query": "SELECT id, name FROM entry",
+                    "columns": {
+                        "id": {"data_type": "integer", "not_null": True},
+                        "name": {"data_type": "text", "not_null": True},
+                    },
+                    "lookups": {"id": ["id"]},
+                },
+            },
+        }
+        tables = validate_schema(schema)
+        views = validate_views(schema, tables)
+
+        repository = render_repository(tables, views=views)
+        classes = generated_classes(tables, Path("generated"), views=views)
+
+        self.assertIn("func get_all_entry_summary() -> Array[EntrySummaryData]:", repository)
+        self.assertIn("func get_entry_summary_by_id(id: int) -> EntrySummaryData:", repository)
+        self.assertIn(
+            'var query := "SELECT * FROM entry_summary WHERE id = ?;"',
+            repository,
+        )
+        self.assertIn("query_with_bindings(query, [id])", repository)
+        self.assertNotIn("func insert_entry_summary", repository)
+        self.assertNotIn("func update_entry_summary", repository)
+        self.assertNotIn("func delete_entry_summary", repository)
+        self.assertIn("class_name EntrySummaryData", classes[Path("generated/entry_summary_data.gd")])
+        self.assertIn("static func view_name() -> String:", classes[Path("generated/entry_summary_data.gd")])
+
+    def test_rejects_nullable_view_lookup_columns(self) -> None:
+        schema = {
+            "tables": {"entry": {"id": {"data_type": "integer", "primary_key": True}}},
+            "views": {
+                "entry_summary": {
+                    "query": "SELECT id FROM entry",
+                    "columns": {"id": {"data_type": "integer"}},
+                    "lookups": {"id": ["id"]},
+                },
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "must be declared not_null"):
+            validate_schema(schema)
 
 
 if __name__ == "__main__":
