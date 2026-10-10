@@ -12,6 +12,20 @@ func _init(database: SQLite) -> void:
     _database = database
 
 
+func _execute_write(query: String, bindings: Array) -> bool:
+    if _database == null:
+        push_error("Cannot query without a database handle.")
+        return false
+    if not _database.query_with_bindings(query, bindings):
+        push_error("Failed to execute database write: %s" % _database.error_message)
+        return false
+    if not _database.query("SELECT changes() AS affected_rows;"):
+        push_error("Failed to check affected database rows: %s" % _database.error_message)
+        return false
+    var rows: Array = _database.query_result
+    return not rows.is_empty() and int(rows[0].get("affected_rows", 0)) > 0
+
+
 func get_example1_by_id(id: String) -> Example1Data:
     if _database == null:
         push_error("Cannot query without a database handle.")
@@ -26,7 +40,7 @@ func get_example1_by_id(id: String) -> Example1Data:
     return Example1Data.from_row(rows[0])
 
 
-func get_all_example1s() -> Array[Example1Data]:
+func get_all_example1() -> Array[Example1Data]:
     var items: Array[Example1Data] = []
     if _database == null:
         push_error("Cannot query without a database handle.")
@@ -38,6 +52,16 @@ func get_all_example1s() -> Array[Example1Data]:
     for row in _database.query_result:
         items.append(Example1Data.from_row(row))
     return items
+
+
+func update_example1(data: Example1Data) -> bool:
+    var query := "UPDATE example1 SET name = ?, date = ? WHERE id = ?;"
+    return _execute_write(query, [data.name, data.date, data.id])
+
+
+func delete_example1_by_id(id: String) -> bool:
+    var query := "DELETE FROM example1 WHERE id = ?;"
+    return _execute_write(query, [id])
 
 
 func get_example2_by_id(id: int) -> Example2Data:
@@ -54,7 +78,7 @@ func get_example2_by_id(id: int) -> Example2Data:
     return Example2Data.from_row(rows[0])
 
 
-func get_all_example2s() -> Array[Example2Data]:
+func get_all_example2() -> Array[Example2Data]:
     var items: Array[Example2Data] = []
     if _database == null:
         push_error("Cannot query without a database handle.")
@@ -66,3 +90,13 @@ func get_all_example2s() -> Array[Example2Data]:
     for row in _database.query_result:
         items.append(Example2Data.from_row(row))
     return items
+
+
+func update_example2(data: Example2Data) -> bool:
+    var query := "UPDATE example2 SET example1 = ?, value = ? WHERE id = ?;"
+    return _execute_write(query, [data.example1, data.value, data.id])
+
+
+func delete_example2_by_id(id: int) -> bool:
+    var query := "DELETE FROM example2 WHERE id = ?;"
+    return _execute_write(query, [id])

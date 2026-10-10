@@ -11,7 +11,7 @@ This template uses a schema-first persistence pipeline:
 
 1. The canonical database contract lives in `data/schema/game/schema.json`.
 2. `tools/generate_data_classes.py` validates that schema and emits typed GDScript models.
-3. A generated `DataRepository` exposes table-specific queries such as `get_example_by_id()` and `get_all_examples()`.
+3. A generated `DataRepository` exposes table-specific queries such as `get_example_by_id()` and `get_all_example()`; list method names preserve the exact table name.
 4. `tools/build_seed_database.py` creates a populated SQLite template from the schema and seed JSON before export.
 5. `PersistenceManager` copies that template into the writable user-data directory for new saves and opens existing saves.
 6. `GameManager` exposes save-game creation and retrieval for the game runtime.
@@ -110,9 +110,15 @@ The `.db` is a non-resource file. Add `data/database/*.db` to the **Filters to e
 ```gdscript
 var database := game_manager.start_new_game("save_01")
 var repository := DataRepository.new(database)
-var example := repository.get_example_by_id("example_01")
-var examples := repository.get_all_examples()
+var example := repository.get_example1_by_id("example_01")
+var examples := repository.get_all_example1()
+if example != null:
+  example.name = "Updated name"
+  var updated := repository.update_example1(example)
+  var deleted := repository.delete_example1_by_id(example.id)
 ```
+
+Generated repositories also provide `update_<table>(data)` and `delete_<table>_by_id(id)` methods. Update uses the data object's primary key to find the row and replaces every non-primary-key field; nullable fields set to `null` clear their stored values. Both methods return `true` when at least one row was affected, and `false` when no row matched or the database operation failed.
 
 ## Agent and contributor guidance
 

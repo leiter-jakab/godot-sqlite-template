@@ -69,3 +69,45 @@ func test_delete_database_closes_cached_handle_before_removing_file() -> void:
     assert_true(manager.delete_database(database_name))
     assert_false(FileAccess.file_exists(database_path))
     assert_false(manager._database_cache.has(database_name))
+
+
+func test_data_repository_updates_and_deletes_rows_by_id() -> void:
+    var manager := PersistenceManager.new()
+    var database_name := "gut_repository_crud_test"
+    manager.delete_database(database_name)
+    var database := manager.initialize_database("game", database_name)
+
+    assert_not_null(database)
+    if database == null:
+        return
+
+    assert_true(database.insert_row("example1", {"id": "crud_parent", "name": "Before", "date": 123}))
+    assert_true(database.insert_row("example2", {"id": 73, "example1": "crud_parent", "value": 4.5}))
+
+    var repository := DataRepository.new(database)
+    var parent := repository.get_example1_by_id("crud_parent")
+    assert_not_null(parent)
+    if parent != null:
+        parent.name = "After"
+        parent.date = null
+        assert_true(repository.update_example1(parent))
+        var updated_parent := repository.get_example1_by_id("crud_parent")
+        assert_eq(updated_parent.name, "After")
+        assert_null(updated_parent.date)
+
+    var child := repository.get_example2_by_id(73)
+    assert_not_null(child)
+    if child != null:
+        child.value = null
+        assert_true(repository.update_example2(child))
+        var updated_child := repository.get_example2_by_id(73)
+        assert_null(updated_child.value)
+        assert_true(repository.delete_example2_by_id(73))
+        assert_false(repository.delete_example2_by_id(73))
+
+    assert_true(repository.delete_example1_by_id("crud_parent"))
+    assert_false(repository.delete_example1_by_id("crud_parent"))
+    var missing_parent := Example1Data.new()
+    missing_parent.id = "missing_parent"
+    assert_false(repository.update_example1(missing_parent))
+    assert_true(manager.delete_database(database_name))
