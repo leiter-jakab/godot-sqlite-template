@@ -14,6 +14,7 @@ func enter() -> void:
     ui.set_process(true)
 
     ui.new_game_requested.connect(_on_new_game_requested)
+    ui.overwrite_game_requested.connect(_on_overwrite_game_requested)
     ui.existing_game_selected.connect(_on_existing_game_selected)
     ui.delete_game_requested.connect(_on_delete_game_requested)
     ui.close_game_requested.connect(_on_close_game_requested)
@@ -26,6 +27,7 @@ func exit() -> void:
         return
 
     ui.new_game_requested.disconnect(_on_new_game_requested)
+    ui.overwrite_game_requested.disconnect(_on_overwrite_game_requested)
     ui.existing_game_selected.disconnect(_on_existing_game_selected)
     ui.delete_game_requested.disconnect(_on_delete_game_requested)
     ui.close_game_requested.disconnect(_on_close_game_requested)
@@ -47,6 +49,12 @@ func _init(root: Main, ui_instance: UiMain = null) -> void:
 func _on_new_game_requested(game_name: String) -> void:
     print("Create new game: %s" % game_name)
     if owner.start_new_game(game_name):
+        request_gameplay_transition()
+
+
+func _on_overwrite_game_requested(game_name: String) -> void:
+    print("Overwrite saved game: %s" % game_name)
+    if owner.overwrite_game(game_name):
         request_gameplay_transition()
 
 

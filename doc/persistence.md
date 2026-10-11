@@ -41,7 +41,7 @@ This design keeps data access predictable and avoids hand-writing repetitive dat
 │   │   │   ├── persistence_manager.gd  # Database creation, schema application, seed loading
 │   │   │   └── data_generated/    # Generated classes and repository
 │   │   └── states/                # State-driven gameplay flow
-│   └── test/                      # GUT tests for game scripts
+│   └── test/                      # GUT tests split into unit, integration, and system tiers
 ├── tools/
 │   ├── build_seed_database.py      # Builds the packaged SQLite template
 │   ├── generate_data_classes.py    # Schema validator and code generator
@@ -128,6 +128,8 @@ Seed JSON is source data for the prebuilt database, not loaded by the runtime. F
 ## Building the database template
 
 The standard-library `sqlite3` module builds the SQLite template at `data/database/game_template.db`, validates seed shape and value types, applies schema constraints, inserts seed rows transactionally, and checks database integrity and foreign keys. No extra Python package is required.
+
+Persistence tests belong in `scripts/test/system/`: they consume the generated template and exercise real SQLite and filesystem behavior. `just test-godot-system` and the full `just test-godot` command build the template automatically before running those tests.
 
 Run this command after changing the schema or seed data and before exporting the game:
 

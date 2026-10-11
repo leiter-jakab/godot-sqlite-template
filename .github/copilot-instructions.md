@@ -30,7 +30,7 @@ The important pieces are:
 
 - Follow the applicable `.editorconfig` settings for all code you create, modify, or generate.
 - Prefer small, explicit Godot scripts with typed properties and clear naming.
-- Preserve the current folder structure: scenes in `scenes/`, game logic and tests in `scripts/game/` and `scripts/test/`, data contracts in `data/`, and generator tools and their tests in `tools/` and `tools/test/`.
+- Preserve the current folder structure: scenes in `scenes/`, game logic in `scripts/game/`, tiered tests in `scripts/test/{unit,integration,system}/`, data contracts in `data/`, and generator tools and their tests in `tools/` and `tools/test/`.
 - When adding a new runtime feature, keep the UI, state changes, and persistence responsibilities separated.
 - Seed files in `data/seed/` should stay valid for the schema and should reflect realistic default data for new games.
 

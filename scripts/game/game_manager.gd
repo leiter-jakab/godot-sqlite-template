@@ -14,6 +14,15 @@ func start_new_game(game_name: String = "game") -> SQLite:
     return _persistence_manager.create_database_from_template(db_name)
 
 
+func overwrite_game(game_name: String) -> SQLite:
+    var db_name := _normalize_game_name(game_name)
+    if db_name.is_empty():
+        push_error("Game name cannot be empty.")
+        return null
+
+    return _persistence_manager.replace_database_from_template(db_name)
+
+
 func load_existing_game(game_name: String) -> SQLite:
     var db_name := _normalize_game_name(game_name)
     if db_name.is_empty():

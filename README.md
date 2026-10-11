@@ -46,7 +46,7 @@ The binaries are installed in the ignored `.bin/` directory. Subsequent runs rep
 │   │   ├── persistence/       # SQLite manager and generated persistence layer
 │   │   ├── states/            # Gameplay lifecycle state machine
 │   │   └── ui/                # UI scripts and screens
-│   └── test/                 # GUT tests for game scripts
+│   └── test/                 # GUT tests split into unit, integration, and system tiers
 ├── tools/
 │   ├── build_seed_database.py # Builds the packaged SQLite template
 │   ├── generate_data_classes.py # Schema-to-GDScript generator
@@ -64,7 +64,7 @@ The binaries are installed in the ignored `.bin/` directory. Subsequent runs rep
 - `data/schema/game/` is the source of truth for the database design; it can include optional fragment files before the generated `schema.json` is merged.
 - `tools/build_seed_database.py` builds the packaged SQLite template from the schema and seed JSON.
 - `tools/generate_data_classes.py` converts that schema into typed persistence classes and repository helpers.
-- `scripts/test/` contains GUT tests for the runtime flow, while `tools/test/` contains Python tests for the schema and database tooling.
+- `scripts/test/` contains GUT tests: `unit/` tests one production class with test doubles, `integration/` coordinates multiple production classes without file-backed resources, and `system/` loads file-backed resources such as scenes and the SQLite template. `tools/test/` contains Python tests for the schema and database tooling.
 - `scripts/game/persistence/` contains the runtime SQLite manager and generated data-access layer.
 - `scripts/game/states/` contains the game flow states such as menu, gameplay, and paused gameplay.
 - `scenes/` contains the Godot scene files that define UI and gameplay layout.
@@ -86,5 +86,15 @@ The template follows a simple high-level flow:
 - Treat generated files under `scripts/game/persistence/data_generated/` as build artifacts.
 - Prefer small, explicit state and script responsibilities over mixing UI, logic, and database code.
 - Use the existing game-state pattern instead of introducing a different flow model.
+
+## Testing
+
+Run all checks with:
+
+```sh
+./justw test
+```
+
+Run only the resource-independent Godot unit tests with `./justw test-godot-unit`. Run the complete Godot suite with `./justw test-godot`; it builds the SQLite template before recursively discovering all GUT tiers. `./justw test-godot-system` runs only tests that load file-backed resources. The integration tier currently has no tests, but `./justw test-godot-integration` is available for future coverage.
 
 For the schema contract, generator workflow, repository usage, and validation commands, see [doc/persistence.md](doc/persistence.md).
