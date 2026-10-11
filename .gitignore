@@ -1,10 +1,18 @@
+# IDE
 .vscode
+
+# Just
+.just
+
+# Python tools
 .venv
 __pycache__
 
-
+# Godot
 .godot
 *.tmp
 *.depren
 ~*
+
+# Template specific
 *.db
