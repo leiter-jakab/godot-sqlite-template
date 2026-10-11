@@ -22,6 +22,10 @@ func start_new_game(game_name: String) -> bool:
     return _game_manager.start_new_game(game_name) != null
 
 
+func overwrite_game(game_name: String) -> bool:
+    return _game_manager.overwrite_game(game_name) != null
+
+
 func load_existing_game(game_name: String) -> bool:
     return _game_manager.load_existing_game(game_name) != null
 

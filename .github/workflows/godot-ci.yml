@@ -26,12 +26,12 @@ jobs:
 
       - name: Validate seed database
         run: ./justw validate-persistence
-      
-      - name: Build SQLite template database
-        run: ./justw build-template-database
 
       - name: Import project
         run: ./justw load-project-headless
 
-      - name: Run GUT tests
-        run: ./justw test-godot
+      - name: Run Godot unit tests
+        run: ./justw test-godot-unit
+
+      - name: Run Godot system tests
+        run: ./justw test-godot-system

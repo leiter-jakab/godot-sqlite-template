@@ -8,6 +8,8 @@ class PersistenceManagerStub:
     var copied_database_name := ""
     var copied_template_path := ""
     var database_result: SQLite
+    var replacement_count := 0
+    var replaced_database_name := ""
     var handle_lookup_count := 0
     var looked_up_database_name := ""
     var handle_result: SQLite
@@ -18,6 +20,12 @@ class PersistenceManagerStub:
     func create_database_from_template(db_name: String, template_path: String = TEMPLATE_DATABASE_PATH) -> SQLite:
         template_copy_count += 1
         copied_database_name = db_name
+        copied_template_path = template_path
+        return database_result
+
+    func replace_database_from_template(db_name: String, template_path: String = TEMPLATE_DATABASE_PATH) -> SQLite:
+        replacement_count += 1
+        replaced_database_name = db_name
         copied_template_path = template_path
         return database_result
 
@@ -61,6 +69,15 @@ func test_start_new_game_returns_null_when_template_copy_fails() -> void:
 
     assert_null(result)
     assert_eq(_persistence_manager.template_copy_count, 1)
+
+
+func test_overwrite_game_normalizes_name_and_replaces_template() -> void:
+    var result := _game_manager.overwrite_game(" Slot_1.db ")
+
+    assert_eq(result, _database)
+    assert_eq(_persistence_manager.replaced_database_name, "Slot_1")
+    assert_eq(_persistence_manager.copied_template_path, PersistenceManager.TEMPLATE_DATABASE_PATH)
+    assert_eq(_persistence_manager.replacement_count, 1)
 
 
 func test_load_existing_game_normalizes_name() -> void:
