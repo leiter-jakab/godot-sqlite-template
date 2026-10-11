@@ -19,7 +19,7 @@ Run the following command to download or verify the pinned `just` and Godot bina
 ./justw init
 ```
 
-The binaries are installed in the ignored `.bin/` directory. Subsequent runs report when they are already downloaded.
+The binaries are installed in the ignored `.bin/` directory. Subsequent runs report when they are already downloaded. On Windows, run `justw` from Git Bash, MSYS2, or Cygwin.
 
 ## Project structure
 
@@ -95,6 +95,6 @@ Run all checks with:
 ./justw test
 ```
 
-Run only the resource-independent Godot unit tests with `./justw test-godot-unit`. Run the complete Godot suite with `./justw test-godot`; it builds the SQLite template before recursively discovering all GUT tiers. `./justw test-godot-system` runs only tests that load file-backed resources. The integration tier currently has no tests, but `./justw test-godot-integration` is available for future coverage.
+Run only the resource-independent Godot unit tests with `./justw test-godot-unit`. Run the complete Godot suite with `./justw test-godot`; it runs the unit, integration, and system tiers as separate GUT invocations. The system tier builds the SQLite template before running tests that load file-backed resources. The integration tier currently has no tests, but `./justw test-godot-integration` is available for future coverage.
 
 For the schema contract, generator workflow, repository usage, and validation commands, see [doc/persistence.md](doc/persistence.md).

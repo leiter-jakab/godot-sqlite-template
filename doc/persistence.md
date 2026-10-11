@@ -129,7 +129,7 @@ Seed JSON is source data for the prebuilt database, not loaded by the runtime. F
 
 The standard-library `sqlite3` module builds the SQLite template at `data/database/game_template.db`, validates seed shape and value types, applies schema constraints, inserts seed rows transactionally, and checks database integrity and foreign keys. No extra Python package is required.
 
-Persistence tests belong in `scripts/test/system/`: they consume the generated template and exercise real SQLite and filesystem behavior. `just test-godot-system` and the full `just test-godot` command build the template automatically before running those tests.
+Persistence tests belong in `scripts/test/system/`: they consume the generated template and exercise real SQLite and filesystem behavior. `./justw test-godot-system` and the full `./justw test-godot` command build the template automatically before running those tests.
 
 Run this command after changing the schema or seed data and before exporting the game:
 

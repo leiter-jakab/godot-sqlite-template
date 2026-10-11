@@ -1,6 +1,6 @@
 database_dir := "data/database"
 test_scripts_dir := "scripts/test"
-generated_scripts_dir := "scripts/game/persistence/generated"
+generated_scripts_dir := "scripts/game/persistence/data_generated"
 
 gut_cmdln := "res://addons/gut/gut_cmdln.gd"
 godot_headless_cmd := "$GODOT_BIN --headless --path ."
