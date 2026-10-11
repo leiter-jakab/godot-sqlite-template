@@ -1,5 +1,10 @@
-test:
+test: test-tools test-gut
+
+test-tools:
     python -m unittest discover -s tools/test
+
+test-gut:
+    "$GODOT_BIN" --headless --path . -s res://addons/gut/gut_cmdln.gd -gconfig= -gdir=res://scripts/test -ginclude_subdirs=true -gexit
 
 merge-schema:
     python tools/merge_schema_fragments.py

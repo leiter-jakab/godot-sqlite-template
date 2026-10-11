@@ -9,38 +9,9 @@ os=$(uname -s)
 arch=$(uname -m)
 
 case "$os" in
-  Linux)
-    plat=linux.sh
-    ext=tar.gz
-    exe=just
-    case "$arch" in
-      x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
-      aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
-      armv7l) target=armv7-unknown-linux-musleabihf ;;
-      armv6l) target=arm-unknown-linux-musleabihf ;;
-      *) echo "justw: unsupported Linux architecture: $arch" >&2; exit 1 ;;
-    esac
-    ;;
-  Darwin)
-    plat=mac.sh
-    ext=tar.gz
-    exe=just
-    case "$arch" in
-      x86_64) target=x86_64-apple-darwin ;;
-      arm64 | aarch64) target=aarch64-apple-darwin ;;
-      *) echo "justw: unsupported macOS architecture: $arch" >&2; exit 1 ;;
-    esac
-    ;;
-  MINGW* | MSYS* | CYGWIN*)
-    plat=win.sh
-    ext=zip
-    exe=just.exe
-    case "$arch" in
-      x86_64 | amd64) target=x86_64-pc-windows-msvc ;;
-      aarch64 | arm64) target=aarch64-pc-windows-msvc ;;
-      *) echo "justw: unsupported Windows architecture: $arch" >&2; exit 1 ;;
-    esac
-    ;;
+  Linux) plat=linux.sh ;;
+  Darwin) plat=mac.sh ;;
+  MINGW* | MSYS* | CYGWIN*) plat=win.sh ;;
   *)
     echo "justw: unsupported operating system: $os" >&2
     exit 1
@@ -53,14 +24,8 @@ esac
 JUST_INSTALL_DIR="${ROOT}/${JUST_INSTALL_DIR}"
 GODOT_INSTALL_DIR="${ROOT}/${GODOT_INSTALL_DIR}"
 
-case "$os" in
-  Linux) godot_rel="Godot_v${GODOT_VERSION}_linux.x86_64" ;;
-  Darwin) godot_rel="Godot.app/Contents/MacOS/Godot" ;;
-  *) godot_rel="Godot_v${GODOT_VERSION}_win64_console.exe" ;;
-esac
-
-JUST_BIN="$JUST_INSTALL_DIR/$exe"
-GODOT_BIN="$GODOT_INSTALL_DIR/$godot_rel"
+JUST_BIN="$JUST_INSTALL_DIR/$JUST_EXECUTABLE"
+GODOT_BIN="$GODOT_INSTALL_DIR/$GODOT_RELATIVE_PATH"
 
 fetch() {
   if command -v curl >/dev/null 2>&1; then
@@ -95,7 +60,15 @@ sha512() {
   fi
 }
 
+require_unzip() {
+  if ! command -v unzip >/dev/null 2>&1; then
+    echo "justw: unzip is required to extract ZIP archives; install unzip and rerun" >&2
+    exit 1
+  fi
+}
+
 install_godot() {
+  require_unzip
   url="$GODOT_DOWNLOAD_URL"
   archive="${url##*/}"
   tmp=$(mktemp -d)
@@ -117,17 +90,16 @@ install_godot() {
   fi
 
   mkdir -p "$GODOT_INSTALL_DIR"
-  if command -v unzip >/dev/null 2>&1; then
-    unzip -qo "$tmp/$archive" -d "$GODOT_INSTALL_DIR"
-  else
-    tar -xf "$tmp/$archive" -C "$GODOT_INSTALL_DIR"
-  fi
+  unzip -qo "$tmp/$archive" -d "$GODOT_INSTALL_DIR"
   rm -rf "$tmp"
   chmod +x "$GODOT_BIN"
 }
 
 install_just() {
-  archive="just-$JUST_VERSION-$target.$ext"
+  if [ "$JUST_ARCHIVE_EXT" = zip ]; then
+    require_unzip
+  fi
+  archive="just-$JUST_VERSION-$JUST_TARGET.$JUST_ARCHIVE_EXT"
   tmp=$(mktemp -d)
   trap 'rm -rf "$tmp"' EXIT
 
@@ -146,16 +118,14 @@ install_just() {
   fi
 
   mkdir -p "$JUST_INSTALL_DIR"
-  if [ "$ext" = zip ]; then
-    if command -v unzip >/dev/null 2>&1; then
-      unzip -qo "$tmp/$archive" "$exe" -d "$JUST_INSTALL_DIR"
-    else
-      tar -xf "$tmp/$archive" -C "$JUST_INSTALL_DIR" "$exe"
-    fi
+  if [ "$JUST_ARCHIVE_EXT" = zip ]; then
+    unzip -qo "$tmp/$archive" "$JUST_EXECUTABLE" -d "$JUST_INSTALL_DIR"
   else
-    tar -xzf "$tmp/$archive" -C "$JUST_INSTALL_DIR" "$exe"
+    tar -xzf "$tmp/$archive" -C "$JUST_INSTALL_DIR" "$JUST_EXECUTABLE"
   fi
   chmod +x "$JUST_BIN"
+  rm -rf "$tmp"
+  trap - EXIT
 }
 
 if [ ! -x "$JUST_BIN" ]; then

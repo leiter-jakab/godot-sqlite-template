@@ -36,7 +36,7 @@ The important pieces are:
 
 ## Verification before completion
 
-- On Windows, locate and invoke `Godot_v4.7.2-stable_win64_console.exe` for Godot engine commands instead of assuming `godot` is on `PATH`.
+- Locate godot executeable in `.bin/godot/`. Execute it from there directly for Godot engine commands instead of assuming `godot` is on `PATH`.
 
 For persistence-related changes, validate the schema and seed data with:
 
