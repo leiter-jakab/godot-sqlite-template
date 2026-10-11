@@ -1,0 +1,1 @@
+GODOT_DOWNLOAD_URL=${GODOT_BASE_URL}_win64.exe.zip
