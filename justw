@@ -1,0 +1,110 @@
+#!/bin/sh
+# Wrapper that downloads a pinned `just` release into .just/ and runs it.
+set -eu
+
+JUST_VERSION=1.58.0
+BASE_URL="https://github.com/casey/just/releases/download/$JUST_VERSION"
+
+ROOT=$(cd "$(dirname "$0")" && pwd)
+INSTALL_DIR="$ROOT/.just/$JUST_VERSION"
+
+os=$(uname -s)
+arch=$(uname -m)
+
+case "$os" in
+  Linux)
+    ext=tar.gz
+    exe=just
+    case "$arch" in
+      x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+      aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+      armv7l) target=armv7-unknown-linux-musleabihf ;;
+      armv6l) target=arm-unknown-linux-musleabihf ;;
+      *) echo "justw: unsupported Linux architecture: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  Darwin)
+    ext=tar.gz
+    exe=just
+    case "$arch" in
+      x86_64) target=x86_64-apple-darwin ;;
+      arm64 | aarch64) target=aarch64-apple-darwin ;;
+      *) echo "justw: unsupported macOS architecture: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  MINGW* | MSYS* | CYGWIN*)
+    ext=zip
+    exe=just.exe
+    case "$arch" in
+      x86_64 | amd64) target=x86_64-pc-windows-msvc ;;
+      aarch64 | arm64) target=aarch64-pc-windows-msvc ;;
+      *) echo "justw: unsupported Windows architecture: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  *)
+    echo "justw: unsupported operating system: $os" >&2
+    exit 1
+    ;;
+esac
+
+JUST_BIN="$INSTALL_DIR/$exe"
+
+fetch() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "$2" "$1"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$2" "$1"
+  else
+    echo "justw: curl or wget is required" >&2
+    exit 1
+  fi
+}
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d ' ' -f 1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d ' ' -f 1
+  else
+    echo "justw: sha256sum or shasum is required" >&2
+    exit 1
+  fi
+}
+
+install_just() {
+  archive="just-$JUST_VERSION-$target.$ext"
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+
+  echo "justw: downloading $archive" >&2
+  fetch "$BASE_URL/$archive" "$tmp/$archive"
+  fetch "$BASE_URL/SHA256SUMS" "$tmp/SHA256SUMS"
+
+  expected=$(grep " \*\?$archive\$" "$tmp/SHA256SUMS" | cut -d ' ' -f 1)
+  if [ -z "$expected" ]; then
+    echo "justw: no checksum found for $archive" >&2
+    exit 1
+  fi
+  if [ "$(sha256 "$tmp/$archive")" != "$expected" ]; then
+    echo "justw: checksum mismatch for $archive" >&2
+    exit 1
+  fi
+
+  mkdir -p "$INSTALL_DIR"
+  if [ "$ext" = zip ]; then
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -qo "$tmp/$archive" "$exe" -d "$INSTALL_DIR"
+    else
+      tar -xf "$tmp/$archive" -C "$INSTALL_DIR" "$exe"
+    fi
+  else
+    tar -xzf "$tmp/$archive" -C "$INSTALL_DIR" "$exe"
+  fi
+  chmod +x "$JUST_BIN"
+}
+
+if [ ! -x "$JUST_BIN" ]; then
+  install_just
+fi
+
+exec "$JUST_BIN" "$@"
