@@ -130,10 +130,14 @@ install_just() {
 
 if [ ! -x "$JUST_BIN" ]; then
   install_just
+else
+  echo "justw: just is already downloaded" >&2
 fi
 
 if [ ! -x "$GODOT_BIN" ]; then
   install_godot
+else
+  echo "justw: Godot is already downloaded" >&2
 fi
 
 export GODOT_BIN

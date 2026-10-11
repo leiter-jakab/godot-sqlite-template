@@ -11,6 +11,16 @@ The required Godot addons are included under `addons/`, so a fresh clone does no
 
 Keep the upstream license and notice files when updating either addon.
 
+## Setup
+
+Run the following command to download or verify the pinned `just` and Godot binaries:
+
+```sh
+./justw init
+```
+
+The binaries are installed in the ignored `.bin/` directory. Subsequent runs report when they are already downloaded.
+
 ## Project structure
 
 ```text
