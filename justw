@@ -1,18 +1,16 @@
 #!/bin/sh
-# Wrapper that downloads a pinned `just` release into .just/ and runs it.
+# Wrapper that downloads pinned `just` and Godot releases (see env/) and runs just.
 set -eu
 
-JUST_VERSION=1.58.0
-BASE_URL="https://github.com/casey/just/releases/download/$JUST_VERSION"
-
 ROOT=$(cd "$(dirname "$0")" && pwd)
-INSTALL_DIR="$ROOT/.just/$JUST_VERSION"
+ENV_DIR="${ROOT}/env"
 
 os=$(uname -s)
 arch=$(uname -m)
 
 case "$os" in
   Linux)
+    plat=linux.sh
     ext=tar.gz
     exe=just
     case "$arch" in
@@ -24,6 +22,7 @@ case "$os" in
     esac
     ;;
   Darwin)
+    plat=mac.sh
     ext=tar.gz
     exe=just
     case "$arch" in
@@ -33,6 +32,7 @@ case "$os" in
     esac
     ;;
   MINGW* | MSYS* | CYGWIN*)
+    plat=win.sh
     ext=zip
     exe=just.exe
     case "$arch" in
@@ -47,7 +47,20 @@ case "$os" in
     ;;
 esac
 
-JUST_BIN="$INSTALL_DIR/$exe"
+. "${ENV_DIR}/conf.sh"
+. "${ENV_DIR}/conf_${plat}"
+
+JUST_INSTALL_DIR="${ROOT}/${JUST_INSTALL_DIR}"
+GODOT_INSTALL_DIR="${ROOT}/${GODOT_INSTALL_DIR}"
+
+case "$os" in
+  Linux) godot_rel="Godot_v${GODOT_VERSION}_linux.x86_64" ;;
+  Darwin) godot_rel="Godot.app/Contents/MacOS/Godot" ;;
+  *) godot_rel="Godot_v${GODOT_VERSION}_win64_console.exe" ;;
+esac
+
+JUST_BIN="$JUST_INSTALL_DIR/$exe"
+GODOT_BIN="$GODOT_INSTALL_DIR/$godot_rel"
 
 fetch() {
   if command -v curl >/dev/null 2>&1; then
@@ -71,14 +84,56 @@ sha256() {
   fi
 }
 
+sha512() {
+  if command -v sha512sum >/dev/null 2>&1; then
+    sha512sum "$1" | cut -d ' ' -f 1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 512 "$1" | cut -d ' ' -f 1
+  else
+    echo "justw: sha512sum or shasum is required" >&2
+    exit 1
+  fi
+}
+
+install_godot() {
+  url="$GODOT_DOWNLOAD_URL"
+  archive="${url##*/}"
+  tmp=$(mktemp -d)
+
+  echo "justw: downloading $archive" >&2
+  fetch "$url" "$tmp/$archive"
+  fetch "${url%/*}/SHA512-SUMS.txt" "$tmp/SHA512-SUMS.txt"
+
+  expected=$(grep " \*\?$archive\$" "$tmp/SHA512-SUMS.txt" | cut -d ' ' -f 1)
+  if [ -z "$expected" ]; then
+    rm -rf "$tmp"
+    echo "justw: no checksum found for $archive" >&2
+    exit 1
+  fi
+  if [ "$(sha512 "$tmp/$archive")" != "$expected" ]; then
+    rm -rf "$tmp"
+    echo "justw: checksum mismatch for $archive" >&2
+    exit 1
+  fi
+
+  mkdir -p "$GODOT_INSTALL_DIR"
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -qo "$tmp/$archive" -d "$GODOT_INSTALL_DIR"
+  else
+    tar -xf "$tmp/$archive" -C "$GODOT_INSTALL_DIR"
+  fi
+  rm -rf "$tmp"
+  chmod +x "$GODOT_BIN"
+}
+
 install_just() {
   archive="just-$JUST_VERSION-$target.$ext"
   tmp=$(mktemp -d)
   trap 'rm -rf "$tmp"' EXIT
 
   echo "justw: downloading $archive" >&2
-  fetch "$BASE_URL/$archive" "$tmp/$archive"
-  fetch "$BASE_URL/SHA256SUMS" "$tmp/SHA256SUMS"
+  fetch "$JUST_BASE_URL/$archive" "$tmp/$archive"
+  fetch "$JUST_BASE_URL/SHA256SUMS" "$tmp/SHA256SUMS"
 
   expected=$(grep " \*\?$archive\$" "$tmp/SHA256SUMS" | cut -d ' ' -f 1)
   if [ -z "$expected" ]; then
@@ -90,15 +145,15 @@ install_just() {
     exit 1
   fi
 
-  mkdir -p "$INSTALL_DIR"
+  mkdir -p "$JUST_INSTALL_DIR"
   if [ "$ext" = zip ]; then
     if command -v unzip >/dev/null 2>&1; then
-      unzip -qo "$tmp/$archive" "$exe" -d "$INSTALL_DIR"
+      unzip -qo "$tmp/$archive" "$exe" -d "$JUST_INSTALL_DIR"
     else
-      tar -xf "$tmp/$archive" -C "$INSTALL_DIR" "$exe"
+      tar -xf "$tmp/$archive" -C "$JUST_INSTALL_DIR" "$exe"
     fi
   else
-    tar -xzf "$tmp/$archive" -C "$INSTALL_DIR" "$exe"
+    tar -xzf "$tmp/$archive" -C "$JUST_INSTALL_DIR" "$exe"
   fi
   chmod +x "$JUST_BIN"
 }
@@ -107,4 +162,9 @@ if [ ! -x "$JUST_BIN" ]; then
   install_just
 fi
 
+if [ ! -x "$GODOT_BIN" ]; then
+  install_godot
+fi
+
+export GODOT_BIN
 exec "$JUST_BIN" "$@"

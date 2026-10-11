@@ -1,8 +1,8 @@
 # IDE
 .vscode
 
-# Just
-.just
+# Bootstrapped tools (just, Godot)
+.bin
 
 # Python tools
 .venv
