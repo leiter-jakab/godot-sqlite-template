@@ -4,6 +4,7 @@ generated_scripts_dir := "scripts/game/persistence/data_generated"
 
 gut_cmdln := "res://addons/gut/gut_cmdln.gd"
 godot_headless_cmd := "$GODOT_BIN --headless --path ."
+godot_bg_sh := "tools/godot_bg.sh"
 
 
 # Download or verify the pinned just and Godot binaries.
@@ -21,7 +22,7 @@ test-tools:
 test-godot: test-godot-unit test-godot-integration test-godot-system
 
 # Generate the GD Script data classes from the schema.json.
-generate-data-classes: validate-persistence
+generate-data-classes: merge-schema-fragments
     python tools/generate_data_classes.py
 
 # Run the Godot unit tests.
@@ -55,6 +56,18 @@ validate-persistence: merge-schema-fragments
 # Build the template SQLite database.
 build-template-database: validate-persistence
     python tools/build_seed_database.py
+
+# Start the headless Godot editor as a background process.
+godot-bg-start: load-project-headless
+    bash {{ godot_bg_sh }} start
+
+# Stop the background headless Godot process.
+godot-bg-stop:
+    bash {{ godot_bg_sh }} stop
+
+# Follow the background headless Godot log.
+godot-bg-log:
+    bash {{ godot_bg_sh }} log
 
 # Remove any generated files.
 clean:
