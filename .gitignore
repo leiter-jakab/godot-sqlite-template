@@ -9,6 +9,7 @@
 __pycache__
 
 # Godot
+addons
 .godot
 *.tmp
 *.depren

@@ -1,0 +1,7 @@
+[gut]
+version = "9.7.1"
+src = "https://github.com/bitwes/Gut/archive/refs/tags/v{version}.tar.gz"
+
+[godot-sqlite]
+version = "4.9"
+src = "https://github.com/2shady4u/godot-sqlite/releases/download/v{version}/addons.zip"
