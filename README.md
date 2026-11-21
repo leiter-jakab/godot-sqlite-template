@@ -1,4 +1,4 @@
-# Godot SQLite Template
+# Godot Sqlite Template
 
 This repository is a Godot 4 starter template for games that need SQLite-backed persistence without scattering database logic through gameplay code. The project keeps the app flow, UI, and persistence responsibilities separated so it is easy to extend with a schema-first data model.
 
@@ -11,15 +11,32 @@ The required Godot addons are included under `addons/`, so a fresh clone does no
 
 Keep the upstream license and notice files when updating either addon.
 
+The pinned addon versions and download URLs are in `godot-addons.toml`. To install
+them, run the manager with Python 3.11 or newer; no extra Python packages are needed:
+
+```sh
+python tools/godot_addon_manager.py
+```
+
+The manager extracts the configured addon from repository tag archives or
+release archives. It refuses to overwrite an existing addon directory; pass
+`--force` to replace it, including any local changes in that directory. Each
+download is staged before its existing directory is replaced. If a later addon
+fails, addons already installed by the same run remain installed. After an
+addon update, record its upstream source and version in the change description.
+
 ## Setup
 
-Run the following command to download or verify the pinned `just` and Godot binaries:
+Run the following command to download or verify the pinned `just` and Godot binaries
+and install missing addons (requires Python 3.11 or newer):
 
 ```sh
 ./justw init
 ```
 
-The binaries are installed in the ignored `.bin/` directory. Subsequent runs report when they are already downloaded. On Windows, run `justw` from Git Bash, MSYS2, or Cygwin.
+The binaries are installed in the ignored `.bin/` directory. Existing addon
+directories are skipped, without checking their versions or replacing local
+changes. On Windows, run `justw` from Git Bash, MSYS2, or Cygwin.
 
 ## Project structure
 
@@ -50,6 +67,7 @@ The binaries are installed in the ignored `.bin/` directory. Subsequent runs rep
 ├── tools/
 │   ├── build_seed_database.py # Builds the packaged SQLite template
 │   ├── generate_data_classes.py # Schema-to-GDScript generator
+│   ├── godot_addon_manager.py # Installs pinned Godot addons
 │   ├── merge_schema_fragments.py # Optional schema fragment merger
 │   └── test/                 # Python tests for the tool scripts
 ├── project.godot              # Godot project configuration

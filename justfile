@@ -7,8 +7,9 @@ godot_headless_cmd := "$GODOT_BIN --headless --path ."
 godot_bg_sh := "tools/godot_bg.sh"
 
 
-# Download or verify the pinned just and Godot binaries.
+# Download or verify the pinned just and Godot binaries, and install missing addons.
 init:
+    python tools/godot_addon_manager.py --skip-existing
     @echo "Project dependencies are ready."
 
 # Remove any generated files.
